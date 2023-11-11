@@ -18,7 +18,6 @@ const expectedBlobHeaderType = "OSMHeader"
 const expectedBlobDataType = "OSMData"
 const maxBlobHeaderSize = 32 * 1024
 const maxBlobSize = 64 * 1024 * 1024
-const degMultiplier = 1e-9
 
 type BlobReader interface {
 	Read(blobs chan valueErrPair.Pair[*osmproto.Blob])
