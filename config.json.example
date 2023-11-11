@@ -1,0 +1,7 @@
+{
+  "logging": {
+    "level": "info",
+    "file": "logs/application.log",
+    "console": true
+  }
+}
