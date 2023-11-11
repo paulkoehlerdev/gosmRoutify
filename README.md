@@ -13,3 +13,5 @@ Special thanks to the owners and maintainers of following libraries, which I eit
 - [`valhalla` https://github.com/valhalla/valhalla](https://github.com/valhalla/valhalla)
 - [`OSM-binary` https://github.com/openstreetmap/OSM-binary](https://github.com/openstreetmap/OSM-binary)
 - [`osmpbf` https://github.com/qedus/osmpbf](https://github.com/qedus/osmpbf)
+
+I also want to thank [Geofabrik GmbH](https://www.geofabrik.de/) for providing the OSM data extracts for testing and experiencing this project.
