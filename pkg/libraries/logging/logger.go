@@ -13,9 +13,9 @@ type LogLevel string
 
 const (
 	LevelError   LogLevel = "error"
-	LevelWarning          = "warning"
-	LevelInfo             = "info"
-	LevelDebug            = "debug"
+	LevelWarning LogLevel = "warning"
+	LevelInfo    LogLevel = "info"
+	LevelDebug   LogLevel = "debug"
 )
 
 type Logger interface {
