@@ -2,10 +2,10 @@ package dataDecoder
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/getData"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/osmpbfData"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/osmproto"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 

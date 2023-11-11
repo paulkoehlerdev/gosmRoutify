@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/dataDecoder"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/osmpbfData"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/osmproto"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbf/valueErrPair"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"sync"
 )
