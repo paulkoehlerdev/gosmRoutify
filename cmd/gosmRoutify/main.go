@@ -1,0 +1,5 @@
+package gosmRoutify
+
+func main() {
+
+}
