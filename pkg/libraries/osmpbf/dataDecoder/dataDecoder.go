@@ -74,7 +74,13 @@ func (i *impl) parseNodes(block *osmproto.PrimitiveBlock, nodes []*osmproto.Node
 		tags := extractTags(stringTable, node.GetKeys(), node.GetVals())
 		info := extractInfo(stringTable, node.GetInfo(), dateGranularity)
 
-		i.data = append(i.data, &osmpbfData.Node{id, latitude, longitude, tags, info})
+		i.data = append(i.data, &osmpbfData.Node{
+			ID:   id,
+			Lat:  latitude,
+			Lon:  longitude,
+			Tags: tags,
+			Info: info,
+		})
 	}
 
 }
@@ -90,7 +96,11 @@ func (i *impl) parseDenseNodes(block *osmproto.PrimitiveBlock, denseNodes *osmpr
 	lons := denseNodes.GetLon()
 	denseinfo := denseNodes.GetDenseinfo()
 
-	tu := tagUnpacker{stringTable, denseNodes.GetKeysVals(), 0}
+	tu := tagUnpacker{
+		stringTable: stringTable,
+		keysVals:    denseNodes.GetKeysVals(),
+		index:       0,
+	}
 	var id, lat, lon int64
 	var state denseInfoState
 	for index := range ids {
@@ -102,7 +112,13 @@ func (i *impl) parseDenseNodes(block *osmproto.PrimitiveBlock, denseNodes *osmpr
 		tags := tu.next()
 		info := extractDenseInfo(stringTable, &state, denseinfo, index, dateGranularity)
 
-		i.data = append(i.data, &osmpbfData.Node{id, latitude, longitude, tags, info})
+		i.data = append(i.data, &osmpbfData.Node{
+			ID:   id,
+			Lat:  latitude,
+			Lon:  longitude,
+			Tags: tags,
+			Info: info,
+		})
 	}
 }
 
@@ -125,7 +141,12 @@ func (i *impl) parseWays(block *osmproto.PrimitiveBlock, ways []*osmproto.Way) {
 
 		info := extractInfo(stringTable, way.GetInfo(), dateGranularity)
 
-		i.data = append(i.data, &osmpbfData.Way{id, tags, nodeIDs, info})
+		i.data = append(i.data, &osmpbfData.Way{
+			ID:      id,
+			Tags:    tags,
+			NodeIDs: nodeIDs,
+			Info:    info,
+		})
 	}
 }
 
@@ -139,7 +160,12 @@ func (i *impl) parseRelations(block *osmproto.PrimitiveBlock, relations []*osmpr
 		members := extractMembers(stringTable, rel)
 		info := extractInfo(stringTable, rel.GetInfo(), dateGranularity)
 
-		i.data = append(i.data, &osmpbfData.Relation{id, tags, members, info})
+		i.data = append(i.data, &osmpbfData.Relation{
+			ID:      id,
+			Tags:    tags,
+			Members: members,
+			Info:    info,
+		})
 	}
 }
 
@@ -166,7 +192,11 @@ func extractMembers(stringTable [][]byte, relation *osmproto.Relation) []osmpbfD
 
 		role := stringTable[roleIDs[index]]
 
-		members[index] = osmpbfData.Member{memID, memType, string(role)}
+		members[index] = osmpbfData.Member{
+			ID:   memID,
+			Type: memType,
+			Role: string(role),
+		}
 	}
 
 	return members
