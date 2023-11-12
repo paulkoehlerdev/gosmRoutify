@@ -57,7 +57,7 @@ func parseLogLevel(level LogLevel) slog.Level {
 }
 
 func getStackTrace() string {
-	buf := make([]byte, 1<<16)
+	buf := make([]byte, 1024)
 	n := runtime.Stack(buf, false)
 	buf = buf[:n]
 
