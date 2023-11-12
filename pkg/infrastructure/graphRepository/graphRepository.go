@@ -33,6 +33,16 @@ func New(graphFolder string, logger logging.Logger) graphRepository.GraphReposit
 	return out
 }
 
+func (g *graphRepositoryImpl) GetNode(gID graph.GraphID) (*osmpbfData.Node, error) {
+	tile := g.getTile(gID.TileID(), gID.Level())
+	return tile.getNode(gID)
+}
+
+func (g *graphRepositoryImpl) GetWay(gID graph.GraphID) (*osmpbfData.Way, error) {
+	tile := g.getTile(gID.TileID(), gID.Level())
+	return tile.getWay(gID)
+}
+
 func (g *graphRepositoryImpl) AddWay(way *osmpbfData.Way, tID graph.TileID) graph.GraphID {
 	highwayClass, ok := way.Tags["highway"]
 	if !ok {
