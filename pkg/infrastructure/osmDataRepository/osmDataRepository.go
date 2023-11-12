@@ -9,20 +9,20 @@ import (
 	"os"
 )
 
-type OsmDataRepository struct {
+type osmDataRepositoryImpl struct {
 	decoder         osmpbf.Decoder
 	file            *os.File
 	parallelization int
 }
 
 func New(parallelization int) osmDataRepository.OsmDataRepository {
-	return &OsmDataRepository{
+	return &osmDataRepositoryImpl{
 		decoder:         nil,
 		parallelization: parallelization,
 	}
 }
 
-func (o *OsmDataRepository) Read(filePath string) error {
+func (o *osmDataRepositoryImpl) Read(filePath string) error {
 	var err error
 	o.file, err = os.Open(filePath)
 	if err != nil {
@@ -37,7 +37,7 @@ func (o *OsmDataRepository) Read(filePath string) error {
 	return nil
 }
 
-func (o *OsmDataRepository) Next() (any, error) {
+func (o *osmDataRepositoryImpl) Next() (any, error) {
 	if o.decoder == nil {
 		return nil, errors.New("no decoder loaded: you need to call Read() before you can call Next()")
 	}
@@ -49,7 +49,7 @@ func (o *OsmDataRepository) Next() (any, error) {
 	return data, err
 }
 
-func (o *OsmDataRepository) Stop() {
+func (o *osmDataRepositoryImpl) Stop() {
 	if o.file != nil {
 		_ = o.file.Close()
 	}

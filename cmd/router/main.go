@@ -9,10 +9,15 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.json", "path to config file")
+	graphPath := flag.String("graph", "./resources/graph/", "path to graph folder")
 	flag.Parse()
 
 	if configPath == nil {
 		panic("no config file provided")
+	}
+
+	if graphPath == nil {
+		panic("no graph folder provided")
 	}
 
 	config, err := config.FromFile(*configPath)
