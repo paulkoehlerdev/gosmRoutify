@@ -15,13 +15,13 @@ func New() OsmDataPreprocessorService {
 
 // Filter Returns true if the data should be filtered out
 func (i impl) Filter(data any) bool {
-	switch data.(type) {
+	switch data := data.(type) {
 	case *osmpbfData.Node:
-		return i.filterNode(data.(*osmpbfData.Node))
+		return i.filterNode(data)
 	case *osmpbfData.Way:
-		return i.filterWay(data.(*osmpbfData.Way))
+		return i.filterWay(data)
 	case *osmpbfData.Relation:
-		return i.filterRelation(data.(*osmpbfData.Relation))
+		return i.filterRelation(data)
 	default:
 		return true
 	}

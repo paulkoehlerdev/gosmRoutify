@@ -44,12 +44,12 @@ func New(filePath string, logger logging.Logger) temporaryOSMDataRepository.Temp
 }
 
 func (i *temporaryOSMDataRepositoryImpl) AddOSMData(data any) error {
-	switch data.(type) {
+	switch data := data.(type) {
 	case *osmpbfData.Node:
-		i.addNode(data.(*osmpbfData.Node))
+		i.addNode(data)
 		return nil
 	case *osmpbfData.Way:
-		i.addWay(data.(*osmpbfData.Way))
+		i.addWay(data)
 		return nil
 	default:
 		return fmt.Errorf("unknown data type %T", data)

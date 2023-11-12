@@ -12,8 +12,6 @@ import (
 	"os"
 )
 
-type osmID uint64
-
 type graphRepositoryImpl struct {
 	graphFolder string
 	logger      logging.Logger
