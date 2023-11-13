@@ -3,5 +3,9 @@
     "level": "info",
     "file": "logs/application.log",
     "console": true
+  },
+  "server": {
+    "host": "localhost",
+    "port": 3000
   }
 }
