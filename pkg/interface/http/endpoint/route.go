@@ -58,6 +58,11 @@ func (r RouteEndpointHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 	gJson := geoJson.NewEmptyGeoJson()
 	gJson.AddFeature(geoJson.NewFeature(lineString.ToGeometry()))
 	geoJSONBytes, err := json.Marshal(gJson)
+	if err != nil {
+		r.logger.Debug().Msgf("error while marshalling geojson: %s", err.Error())
+		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
 	writer.Header().Set("Content-Type", "application/geo+json")
 	_, err = writer.Write(geoJSONBytes)
