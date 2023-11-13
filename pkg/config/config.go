@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	LoggerConfig *LoggerConfig `json:"logging"`
+	ServerConfig *ServerConfig `json:"server"`
 }
 
 func FromFile(path string) (*Config, error) {
