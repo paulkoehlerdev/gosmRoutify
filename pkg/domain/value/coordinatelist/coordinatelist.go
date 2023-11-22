@@ -7,6 +7,7 @@ type CoordinateList interface {
 	Len() uint64
 	Cap() uint64
 	Get(index uint64) coordinate.Coordinate
+	ToCoordinateArray() []coordinate.Coordinate
 }
 
 type CoordinateListImpl struct {
@@ -36,4 +37,13 @@ func (c *CoordinateListImpl) Cap() uint64 {
 
 func (c *CoordinateListImpl) Get(index uint64) coordinate.Coordinate {
 	return coordinate.New(c.lons[index], c.lats[index])
+}
+
+func (c *CoordinateListImpl) ToCoordinateArray() []coordinate.Coordinate {
+	cooArr := make([]coordinate.Coordinate, len(c.lats))
+	for i := 0; i < len(c.lats); i++ {
+		cooArr[i] = coordinate.New(c.lons[i], c.lats[i])
+	}
+
+	return cooArr
 }

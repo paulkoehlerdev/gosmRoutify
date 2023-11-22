@@ -5,6 +5,7 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/nodetype"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinatelist"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/kvstorage"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 )
@@ -12,40 +13,40 @@ import (
 const minNodeCapacity = 1 << 16
 
 type NodeRepository interface {
-	Add(osmID int64, nodeType nodetype.NodeType)
-	AddOrUpdate(osmID int64, nodeType nodetype.NodeType, updateFunc func(nodeType nodetype.NodeType) nodetype.NodeType)
-	GetNodeType(osmID int64) nodetype.NodeType
-	SetCoordinate(osmID int64, coordinate coordinate.Coordinate) nodetype.NodeType
-	GetCoordinate(osmID int64) (coordinate.Coordinate, error)
-	SetTags(osmID int64, tags map[string]string) error
-	GetTags(osmID int64) (map[string]string, error)
-	SetSplitNode(osmID int64)
-	IsSplitNode(osmID int64) bool
-	UnsetSplitNode(osmID int64)
+	Add(osmID osmid.OsmID, nodeType nodetype.NodeType)
+	AddOrUpdate(osmID osmid.OsmID, nodeType nodetype.NodeType, updateFunc func(nodeType nodetype.NodeType) nodetype.NodeType)
+	GetNodeType(osmID osmid.OsmID) nodetype.NodeType
+	SetCoordinate(osmID osmid.OsmID, coordinate coordinate.Coordinate) nodetype.NodeType
+	GetCoordinate(osmID osmid.OsmID) (coordinate.Coordinate, error)
+	SetTags(osmID osmid.OsmID, tags map[string]string) error
+	GetTags(osmID osmid.OsmID) (map[string]string, error)
+	SetSplitNode(osmID osmid.OsmID)
+	IsSplitNode(osmID osmid.OsmID) bool
+	UnsetSplitNode(osmID osmid.OsmID)
 	CalcNodeTypeStatistics() map[nodetype.NodeType]int
 }
 
 type impl struct {
 	logger         logging.Logger
-	nodes          map[int64]nodeIndex
+	nodes          map[osmid.OsmID]nodeIndex
 	towerNodes     coordinatelist.CoordinateList
 	pillarNodes    coordinatelist.CoordinateList
 	nodeTags       kvstorage.KVStorage[nodeIndex, map[string]string]
-	nodesToBeSplit map[int64]struct{}
+	nodesToBeSplit map[osmid.OsmID]struct{}
 }
 
 func New(logger logging.Logger) NodeRepository {
 	return &impl{
 		logger:         logger,
-		nodes:          make(map[int64]nodeIndex),
+		nodes:          make(map[osmid.OsmID]nodeIndex),
 		towerNodes:     coordinatelist.NewCoordinateList(minNodeCapacity),
 		pillarNodes:    coordinatelist.NewCoordinateList(minNodeCapacity),
 		nodeTags:       kvstorage.NewRamKVStorage[nodeIndex, map[string]string](minNodeCapacity),
-		nodesToBeSplit: make(map[int64]struct{}),
+		nodesToBeSplit: make(map[osmid.OsmID]struct{}),
 	}
 }
 
-func (i *impl) Add(osmID int64, nodeType nodetype.NodeType) {
+func (i *impl) Add(osmID osmid.OsmID, nodeType nodetype.NodeType) {
 	index, err := i.indexFromOsmID(osmID)
 	if err == nil {
 		index, err = newNodeIndex(nodeType, 0)
@@ -62,7 +63,7 @@ func (i *impl) Add(osmID int64, nodeType nodetype.NodeType) {
 	i.nodes[osmID] = index
 }
 
-func (i *impl) indexFromOsmID(osmID int64) (nodeIndex, error) {
+func (i *impl) indexFromOsmID(osmID osmid.OsmID) (nodeIndex, error) {
 	nodeIndex, ok := i.nodes[osmID]
 	if !ok {
 		return 0, fmt.Errorf("node with osmID %d not found", osmID)
@@ -70,7 +71,7 @@ func (i *impl) indexFromOsmID(osmID int64) (nodeIndex, error) {
 	return nodeIndex, nil
 }
 
-func (i *impl) AddOrUpdate(osmID int64, newNodeType nodetype.NodeType, updateFunc func(nodeType nodetype.NodeType) nodetype.NodeType) {
+func (i *impl) AddOrUpdate(osmID osmid.OsmID, newNodeType nodetype.NodeType, updateFunc func(nodeType nodetype.NodeType) nodetype.NodeType) {
 	nodeType := nodetype.EMPTYNODE
 	index, err := i.indexFromOsmID(osmID)
 	if err == nil {
@@ -85,7 +86,7 @@ func (i *impl) AddOrUpdate(osmID int64, newNodeType nodetype.NodeType, updateFun
 	i.Add(osmID, updateFunc(nodeType))
 }
 
-func (i *impl) GetNodeType(osmID int64) nodetype.NodeType {
+func (i *impl) GetNodeType(osmID osmid.OsmID) nodetype.NodeType {
 	index, err := i.indexFromOsmID(osmID)
 	if err != nil {
 		return nodetype.EMPTYNODE
@@ -94,7 +95,7 @@ func (i *impl) GetNodeType(osmID int64) nodetype.NodeType {
 	return index.GetNodeType()
 }
 
-func (i *impl) SetCoordinate(osmID int64, coordinate coordinate.Coordinate) nodetype.NodeType {
+func (i *impl) SetCoordinate(osmID osmid.OsmID, coordinate coordinate.Coordinate) nodetype.NodeType {
 	nodeType := nodetype.EMPTYNODE
 	index, err := i.indexFromOsmID(osmID)
 	if err == nil {
@@ -117,7 +118,7 @@ func (i *impl) SetCoordinate(osmID int64, coordinate coordinate.Coordinate) node
 	return index.GetNodeType()
 }
 
-func (i *impl) GetCoordinate(osmID int64) (coordinate.Coordinate, error) {
+func (i *impl) GetCoordinate(osmID osmid.OsmID) (coordinate.Coordinate, error) {
 	index, err := i.indexFromOsmID(osmID)
 	if err != nil {
 		return coordinate.Coordinate{}, fmt.Errorf("error while getting coordinate: %s", err.Error())
@@ -148,7 +149,7 @@ func (i *impl) addPillarNode(coordinate coordinate.Coordinate) uint64 {
 	return id
 }
 
-func (i *impl) SetTags(osmID int64, tags map[string]string) error {
+func (i *impl) SetTags(osmID osmid.OsmID, tags map[string]string) error {
 	index, err := i.indexFromOsmID(osmID)
 	if err != nil {
 		return fmt.Errorf("error while setting tags: %s", err.Error())
@@ -161,7 +162,7 @@ func (i *impl) SetTags(osmID int64, tags map[string]string) error {
 	return nil
 }
 
-func (i *impl) GetTags(osmID int64) (map[string]string, error) {
+func (i *impl) GetTags(osmID osmid.OsmID) (map[string]string, error) {
 	index, err := i.indexFromOsmID(osmID)
 	if err != nil {
 		return nil, fmt.Errorf("error while getting tags: %s", err.Error())
@@ -175,16 +176,16 @@ func (i *impl) GetTags(osmID int64) (map[string]string, error) {
 	return tags, nil
 }
 
-func (i *impl) SetSplitNode(osmID int64) {
+func (i *impl) SetSplitNode(osmID osmid.OsmID) {
 	i.nodesToBeSplit[osmID] = struct{}{}
 }
 
-func (i *impl) IsSplitNode(osmID int64) bool {
+func (i *impl) IsSplitNode(osmID osmid.OsmID) bool {
 	_, ok := i.nodesToBeSplit[osmID]
 	return ok
 }
 
-func (i *impl) UnsetSplitNode(osmID int64) {
+func (i *impl) UnsetSplitNode(osmID osmid.OsmID) {
 	delete(i.nodesToBeSplit, osmID)
 }
 

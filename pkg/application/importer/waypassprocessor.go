@@ -5,6 +5,7 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/osmdatarepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmfilterservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
 )
@@ -49,7 +50,7 @@ func (w *WayPassProcessor) ProcessWay(way *osmpbfreaderdata.Way) {
 			nodeType = nodetype.INTERMEDIATENODE
 		}
 
-		w.nodeService.AddOrUpdate(nodeID, nodeType, func(prev nodetype.NodeType) nodetype.NodeType {
+		w.nodeService.AddOrUpdate(osmid.OsmID(nodeID), nodeType, func(prev nodetype.NodeType) nodetype.NodeType {
 			if prev == nodetype.ENDNODE && isEnd {
 				return nodetype.CONNECTIONNODE
 			}

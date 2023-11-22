@@ -5,9 +5,15 @@ import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/tilerepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/weightingservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/interface/http"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 )
+
+const tileSize = 0.25 //degree
+const maxCacheSize = 100
 
 func main() {
 	configPath := flag.String("config", "config.json", "path to config file")
@@ -31,7 +37,18 @@ func main() {
 
 	logger.Info().Msg("starting routing engine")
 
-	application := router.New()
+	tileRepo := tilerepository.New(
+		logger.WithAttrs("repository", "tile"),
+		tileSize,
+		*graphPath,
+		maxCacheSize,
+	)
+
+	graphSvc := graphservice.New(tileRepo, logger.WithAttrs("service", "graph"))
+
+	weightingSvc := weightingservice.New()
+
+	application := router.New(graphSvc, weightingSvc, logger.WithAttrs("application", "router"))
 
 	server, err := http.NewHttpServer(logger.WithAttrs("service", "interfaceHTTP"), application, config.ServerConfig)
 	if err != nil {

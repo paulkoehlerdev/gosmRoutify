@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geoJson"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"net/http"
 )
@@ -25,8 +25,8 @@ func (r RouteEndpointHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 	startStr := request.URL.Query().Get("start")
 	endStr := request.URL.Query().Get("end")
 
-	var start geoJson.Point
-	var end geoJson.Point
+	var start geojson.Point
+	var end geojson.Point
 
 	err := json.Unmarshal([]byte(startStr), &start)
 	if err != nil {
@@ -49,14 +49,13 @@ func (r RouteEndpointHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	// Print route as geojson
-	lineString := make(geoJson.LineString, len(route))
+	gJson := geojson.NewEmptyGeoJson()
+	lineString := make(geojson.LineString, len(route))
 	for i, coord := range route {
-		lineString[i] = geoJson.NewPoint(coord.Lat(), coord.Lon())
+		lineString[i] = geojson.NewPoint(coord.Lat(), coord.Lon())
 	}
+	gJson.AddFeature(geojson.NewFeature(lineString.ToGeometry()))
 
-	gJson := geoJson.NewEmptyGeoJson()
-	gJson.AddFeature(geoJson.NewFeature(lineString.ToGeometry()))
 	geoJSONBytes, err := json.Marshal(gJson)
 	if err != nil {
 		r.logger.Debug().Msgf("error while marshalling geojson: %s", err.Error())

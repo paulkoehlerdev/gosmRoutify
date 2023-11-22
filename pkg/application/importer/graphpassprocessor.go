@@ -9,6 +9,7 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinatelist"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/nodetags"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
 )
@@ -49,11 +50,13 @@ func (g *GraphPassProcessor) ProcessNode(node *osmpbfreaderdata.Node) {
 		g.logger.Info().Msgf("Processed %d Mio. nodes, accepted nodes: %d", g.nodes/1000000, g.acceptedNodes)
 	}
 
+	osmId := osmid.OsmID(node.ID)
+
 	if !g.filterService.NodeFilter(node) {
 		return
 	}
 
-	nodeType := g.nodeService.SetCoordinate(node.ID, coordinate.New(node.Lat, node.Lon))
+	nodeType := g.nodeService.SetCoordinate(osmId, coordinate.New(node.Lat, node.Lon))
 	if nodeType == nodetype.EMPTYNODE {
 		return
 	}
@@ -62,13 +65,13 @@ func (g *GraphPassProcessor) ProcessNode(node *osmpbfreaderdata.Node) {
 
 	if isBarrierNode(node) {
 		if nodeType != nodetype.JUNCTIONNODE {
-			g.nodeService.SetSplitNode(node.ID)
+			g.nodeService.SetSplitNode(osmId)
 		}
 	}
 
 	for tag := range node.Tags {
 		if _, ok := g.includedNodeTags[tag]; ok {
-			err := g.nodeService.SetTags(node.ID, node.Tags)
+			err := g.nodeService.SetTags(osmId, node.Tags)
 			if err != nil {
 				return
 			}
@@ -101,19 +104,20 @@ func (g *GraphPassProcessor) ProcessWay(way *osmpbfreaderdata.Way) {
 
 	segment := make([]segmentNode, 0, len(way.NodeIDs))
 	for _, nodeID := range way.NodeIDs {
-		coo, err := g.nodeService.GetCoordinate(nodeID)
+		osmId := osmid.OsmID(nodeID)
+		coo, err := g.nodeService.GetCoordinate(osmId)
 		if err != nil {
 			coo = coordinate.New(0, 0)
 		}
 
-		tags, err := g.nodeService.GetTags(nodeID)
+		tags, err := g.nodeService.GetTags(osmId)
 		if err != nil {
 			tags = nil
 		}
 
 		segment = append(segment, segmentNode{
-			nodeType:   g.nodeService.GetNodeType(nodeID),
-			osmID:      nodeID,
+			nodeType:   g.nodeService.GetNodeType(osmId),
+			osmID:      osmId,
 			coordinate: coo,
 			tags:       tags,
 		})

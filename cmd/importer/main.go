@@ -5,12 +5,17 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/importer"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/noderepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/osmdatarepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/tilerepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmdataservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmfilterservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"runtime"
 )
+
+const tileSize = 0.25 //degree
+const maxCacheSize = 400
 
 func main() {
 	dataPath := flag.String("data", "./resources/sample/sample.pbf", "path to data file")
@@ -37,11 +42,28 @@ func main() {
 
 	osmfilterSvc := osmfilterservice.New([]string{})
 
-	application := importer.New(osmdataSvc, nodeSvc, osmfilterSvc, logger.WithAttrs("application", "importer"))
+	tileRepo := tilerepository.New(
+		logger.WithAttrs("repository", "tile"),
+		tileSize,
+		*graphPath,
+		maxCacheSize,
+	)
+
+	graphSvc := graphservice.New(tileRepo, logger.WithAttrs("service", "graph"))
+
+	application := importer.New(
+		osmdataSvc,
+		nodeSvc,
+		osmfilterSvc,
+		graphSvc,
+		logger.WithAttrs("application", "importer"),
+	)
 
 	err := application.RunDataImport()
 	if err != nil {
 		logger.Error().Msgf("error while running data import: %s", err.Error())
 		return
 	}
+
+	tileRepo.Close()
 }
