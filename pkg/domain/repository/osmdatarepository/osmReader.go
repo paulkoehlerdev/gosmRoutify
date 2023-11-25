@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/filter"
 	"io"
 	"os"
 )
@@ -20,7 +21,7 @@ func (o *osmReader) Stop() {
 	}
 }
 
-func (o *osmReader) Read(filePath string) error {
+func (o *osmReader) Read(filePath string, filter filter.Filter) error {
 	var err error
 	o.file, err = os.Open(filePath)
 	if err != nil {
@@ -28,7 +29,7 @@ func (o *osmReader) Read(filePath string) error {
 	}
 
 	o.decoder = osmpbfreader.New(o.file)
-	err = o.decoder.Start(osmpbfreader.ProcsCount(o.parallelization))
+	err = o.decoder.Start(osmpbfreader.ProcsCount(o.parallelization), filter)
 	if err != nil {
 		return fmt.Errorf("error while starting decoder: %s", err.Error())
 	}

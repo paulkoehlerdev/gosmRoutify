@@ -14,6 +14,8 @@ const tileFileEnding = ".tile"
 
 type TileRepository interface {
 	GetTile(coo coordinate.Coordinate) *graphtile.GraphTile
+	GetTileName(coo coordinate.Coordinate) string
+	GetTileSize() float64
 	SetTile(coo coordinate.Coordinate, tile *graphtile.GraphTile)
 	Close()
 }
@@ -48,7 +50,7 @@ func New(logger logging.Logger, tileSize float64, tileFolder string, maxCacheSiz
 }
 
 func (i *impl) GetTile(coo coordinate.Coordinate) *graphtile.GraphTile {
-	tileName := i.TileNameFromCoordinate(coo)
+	tileName := i.GetTileName(coo)
 	return i.getTile(tileName)
 }
 
@@ -57,7 +59,7 @@ func (i *impl) getTile(tileName string) *graphtile.GraphTile {
 }
 
 func (i *impl) SetTile(coo coordinate.Coordinate, tile *graphtile.GraphTile) {
-	tileName := i.TileNameFromCoordinate(coo)
+	tileName := i.GetTileName(coo)
 	i.setTile(tileName, tile)
 }
 
@@ -65,7 +67,7 @@ func (i *impl) setTile(tileName string, tile *graphtile.GraphTile) {
 	i.tileCache.Set(tileName, tile)
 }
 
-func (i *impl) TileNameFromCoordinate(coo coordinate.Coordinate) string {
+func (i *impl) GetTileName(coo coordinate.Coordinate) string {
 	x := uint16(math.Floor(coo.Lat() / i.tileSize))
 	y := uint16(math.Floor(coo.Lon() / i.tileSize))
 	bytesX := make([]byte, 2)
@@ -76,6 +78,10 @@ func (i *impl) TileNameFromCoordinate(coo coordinate.Coordinate) string {
 
 	bytes := append(bytesX, bytesY...)
 	return base64.StdEncoding.EncodeToString(bytes)
+}
+
+func (i *impl) GetTileSize() float64 {
+	return i.tileSize
 }
 
 func (i *impl) Close() {

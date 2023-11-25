@@ -8,7 +8,7 @@ import (
 )
 
 type OsmDataRepository interface {
-	Process(file string, processor OsmDataProcessor) error
+	Process(file string, processor OsmDataProcessor, filter OsmDataFilter) error
 }
 
 type impl struct {
@@ -21,11 +21,11 @@ func New(parallelization int) OsmDataRepository {
 	}
 }
 
-func (o *impl) Process(file string, processor OsmDataProcessor) error {
+func (o *impl) Process(file string, processor OsmDataProcessor, filter OsmDataFilter) error {
 	reader := &osmReader{
 		parallelization: o.parallelization,
 	}
-	err := reader.Read(file)
+	err := reader.Read(file, filter)
 	if err != nil {
 		return fmt.Errorf("error while reading file: %s", err.Error())
 	}
@@ -42,11 +42,11 @@ func (o *impl) Process(file string, processor OsmDataProcessor) error {
 		}
 
 		switch v := data.(type) {
-		case *osmpbfreaderdata.Node:
+		case osmpbfreaderdata.Node:
 			processor.ProcessNode(v)
-		case *osmpbfreaderdata.Way:
+		case osmpbfreaderdata.Way:
 			processor.ProcessWay(v)
-		case *osmpbfreaderdata.Relation:
+		case osmpbfreaderdata.Relation:
 			processor.ProcessRelation(v)
 		default:
 			return fmt.Errorf("unknown data type: %T", v)

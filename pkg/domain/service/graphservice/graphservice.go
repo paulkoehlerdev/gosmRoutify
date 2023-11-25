@@ -9,11 +9,13 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
+	"math"
 )
 
 type GraphService interface {
 	AddEdge(fromID, toID osmid.OsmID, nodeList coordinatelist.CoordinateList, tags []nodetags.NodeTags, way *osmpbfreaderdata.Way)
 	GetTile(coo coordinate.Coordinate) *graphtile.GraphTile
+	FindNearest(coo coordinate.Coordinate) *osmid.OsmID
 }
 
 type impl struct {
@@ -90,4 +92,48 @@ func isReversible(info graphtile.EdgeInfo) bool {
 
 func (i *impl) GetTile(coo coordinate.Coordinate) *graphtile.GraphTile {
 	return i.tileRepo.GetTile(coo)
+}
+
+func (i *impl) FindNearest(coo coordinate.Coordinate) *osmid.OsmID {
+	coos := []coordinate.Coordinate{
+		coo,
+		coordinate.New(coo.Lat()+i.tileRepo.GetTileSize(), coo.Lon()),
+		coordinate.New(coo.Lat()-i.tileRepo.GetTileSize(), coo.Lon()),
+
+		coordinate.New(coo.Lat(), coo.Lon()+i.tileRepo.GetTileSize()),
+		coordinate.New(coo.Lat(), coo.Lon()-i.tileRepo.GetTileSize()),
+
+		coordinate.New(coo.Lat()+i.tileRepo.GetTileSize(), coo.Lon()+i.tileRepo.GetTileSize()),
+		coordinate.New(coo.Lat()+i.tileRepo.GetTileSize(), coo.Lon()-i.tileRepo.GetTileSize()),
+
+		coordinate.New(coo.Lat()-i.tileRepo.GetTileSize(), coo.Lon()+i.tileRepo.GetTileSize()),
+		coordinate.New(coo.Lat()-i.tileRepo.GetTileSize(), coo.Lon()-i.tileRepo.GetTileSize()),
+	}
+
+	minDist := math.Inf(1)
+	var out *osmid.OsmID
+
+	for _, tileCoo := range coos {
+		tile := i.tileRepo.GetTile(tileCoo)
+		if tile == nil {
+			continue
+		}
+
+		dist, osmID := tile.NodeInfos.FindNearest(coo)
+
+		if osmID == nil {
+			continue
+		}
+
+		if math.IsNaN(dist) {
+			continue
+		}
+
+		if dist < minDist {
+			minDist = dist
+			out = osmID
+		}
+	}
+
+	return out
 }

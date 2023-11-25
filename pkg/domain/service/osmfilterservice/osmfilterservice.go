@@ -3,9 +3,9 @@ package osmfilterservice
 import "github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
 
 type OsmFilterService interface {
-	NodeFilter(node *osmpbfreaderdata.Node) bool
-	WayFilter(way *osmpbfreaderdata.Way) bool
-	RelationFilter(relation *osmpbfreaderdata.Relation) bool
+	NodeFilter(node osmpbfreaderdata.Node) bool
+	WayFilter(way osmpbfreaderdata.Way) bool
+	RelationFilter(relation osmpbfreaderdata.Relation) bool
 }
 
 type impl struct {
@@ -23,11 +23,11 @@ func New(ignoredHighwayTypes []string) OsmFilterService {
 	}
 }
 
-func (i *impl) NodeFilter(*osmpbfreaderdata.Node) bool {
+func (i *impl) NodeFilter(osmpbfreaderdata.Node) bool {
 	return true
 }
 
-func (i *impl) WayFilter(way *osmpbfreaderdata.Way) bool {
+func (i *impl) WayFilter(way osmpbfreaderdata.Way) bool {
 	if len(way.NodeIDs) < 2 {
 		return false
 	}
@@ -48,6 +48,6 @@ func (i *impl) WayFilter(way *osmpbfreaderdata.Way) bool {
 	return true
 }
 
-func (i *impl) RelationFilter(*osmpbfreaderdata.Relation) bool {
+func (i *impl) RelationFilter(osmpbfreaderdata.Relation) bool {
 	return true
 }

@@ -16,6 +16,7 @@ type WayPassProcessor struct {
 	filterService osmfilterservice.OsmFilterService
 	ways          int
 	acceptedWays  int
+	nodes         int
 }
 
 func NewWayPassProcessor(logger logging.Logger, nodeService nodeservice.NodeService, filterService osmfilterservice.OsmFilterService) osmdatarepository.OsmDataProcessor {
@@ -28,10 +29,11 @@ func NewWayPassProcessor(logger logging.Logger, nodeService nodeservice.NodeServ
 	}
 }
 
-func (w *WayPassProcessor) ProcessNode(*osmpbfreaderdata.Node) {
+func (w *WayPassProcessor) ProcessNode(osmpbfreaderdata.Node) {
+	w.logger.Warn().Msgf("WayPassProcessor.ProcessNode() should not be called")
 }
 
-func (w *WayPassProcessor) ProcessWay(way *osmpbfreaderdata.Way) {
+func (w *WayPassProcessor) ProcessWay(way osmpbfreaderdata.Way) {
 	w.ways++
 	if w.ways%counterLogBreak == 0 {
 		w.logger.Info().Msgf("Processed %d Mio. ways, accepted ways: %d", w.ways/1000000, w.acceptedWays)
@@ -59,7 +61,8 @@ func (w *WayPassProcessor) ProcessWay(way *osmpbfreaderdata.Way) {
 	}
 }
 
-func (w *WayPassProcessor) ProcessRelation(*osmpbfreaderdata.Relation) {
+func (w *WayPassProcessor) ProcessRelation(osmpbfreaderdata.Relation) {
+	w.logger.Warn().Msgf("WayPassProcessor.ProcessRelation() should not be called")
 }
 
 func (w *WayPassProcessor) OnFinish() {

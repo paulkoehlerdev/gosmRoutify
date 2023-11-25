@@ -4,6 +4,7 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/graphtile"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/highwaytype"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geodistance"
+	"math"
 	"strconv"
 )
 
@@ -37,7 +38,7 @@ func (i *impl) Weight(info graphtile.EdgeInfo) float64 {
 		speed = getDefaultSpeed(highwayClass)
 	} else {
 		speed = parseSpeed(speedStr)
-		if speed == 0.0 {
+		if speed == 0.0 || math.IsNaN(speed) {
 			speed = getDefaultSpeed(highwayClass)
 		}
 	}

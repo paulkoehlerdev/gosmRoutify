@@ -11,13 +11,19 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmdataservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmfilterservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
+	"net/http"
+	_ "net/http/pprof"
 	"runtime"
 )
 
-const tileSize = 0.25 //degree
+const tileSize = 0.12 //degree
 const maxCacheSize = 400
 
 func main() {
+	go func() {
+		http.ListenAndServe(":6060", nil)
+	}()
+
 	dataPath := flag.String("data", "./resources/sample/sample.pbf", "path to data file")
 	graphPath := flag.String("graph", "./resources/graph/", "path to graph folder")
 	flag.Parse()

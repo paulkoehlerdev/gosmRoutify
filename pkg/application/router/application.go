@@ -5,7 +5,6 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/weightingservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/highwaytype"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/astar"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geodistance"
@@ -51,8 +50,8 @@ func (i *impl) FindRoute(start coordinate.Coordinate, end coordinate.Coordinate)
 	}
 
 	startTime = time.Now()
-	startID := startTile.NodeInfos.FindNearest(start)
-	endID := endTile.NodeInfos.FindNearest(end)
+	startID := i.graphService.FindNearest(start)
+	endID := i.graphService.FindNearest(end)
 	i.logger.Debug().Msgf("calculated nearest nodes in %s", time.Since(startTime).String())
 
 	if startID == nil {
@@ -83,12 +82,16 @@ func (i *impl) FindRoute(start coordinate.Coordinate, end coordinate.Coordinate)
 	duration := time.Duration(length) * time.Second
 	i.logger.Debug().Msgf("calculated route takes %s", duration.String())
 
-	var out []coordinate.Coordinate
-	for _, node := range path {
-		out = append(out, infoMap[node].coo)
+	var route []coordinate.Coordinate
+	for _, id := range path {
+		info, ok := infoMap[id]
+		if !ok {
+			continue
+		}
+		route = append(route, info.coo)
 	}
 
-	return out, nil
+	return route, nil
 }
 
 func GetHeuristic(end osmid.OsmID, infoMap map[osmid.OsmID]*GraphInfo) func(id osmid.OsmID) float64 {
@@ -104,7 +107,7 @@ func GetHeuristic(end osmid.OsmID, infoMap map[osmid.OsmID]*GraphInfo) func(id o
 		}
 
 		distance := geodistance.CalcDistanceInMeters(nodeInfo.coo, endInfo.coo)
-		return distance / highwaytype.Motorway.DefaultMaxSpeed()
+		return distance / 1000 //(highwaytype.Motorway.DefaultMaxSpeed() * 2)
 	}
 }
 

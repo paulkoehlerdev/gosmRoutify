@@ -24,12 +24,12 @@ type NodeInfos struct {
 	Tree kdtree.KdTree[osmid.OsmID]
 }
 
-func (n NodeInfos) FindNearest(coordinate coordinate.Coordinate) *osmid.OsmID {
-	return n.Tree.SearchNearest(coordinate.Lat(), coordinate.Lon())
+func (n NodeInfos) FindNearest(coordinate coordinate.Coordinate) (float64, *osmid.OsmID) {
+	return n.Tree.FindNearest(coordinate)
 }
 
 func (n NodeInfos) Insert(coordinate coordinate.Coordinate, id osmid.OsmID) {
-	n.Tree.Insert(coordinate.Lat(), coordinate.Lon(), id)
+	n.Tree.Insert(coordinate, id)
 }
 
 type EdgeInfo struct {

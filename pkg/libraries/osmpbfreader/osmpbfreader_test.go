@@ -12,7 +12,8 @@ import (
 )
 
 func TestImpl_Decode(t *testing.T) {
-	filepath := "../../../resources/sample/sample.pbf"
+	//filepath := "../../../resources/sample/sample.pbf"
+	filepath := "../../../resources/data/germany-latest.osm.pbf"
 	file, err := os.OpenFile(filepath, os.O_RDONLY, 0)
 	if err != nil {
 		t.Fatalf("error opening file: %s", err.Error())
@@ -38,11 +39,11 @@ func TestImpl_Decode(t *testing.T) {
 		}
 
 		switch d := data.(type) {
-		case *osmpbfreaderdata.Node:
+		case osmpbfreaderdata.Node:
 			nodeCount++
-		case *osmpbfreaderdata.Way:
+		case osmpbfreaderdata.Way:
 			wayCount++
-		case *osmpbfreaderdata.Relation:
+		case osmpbfreaderdata.Relation:
 			relationCount++
 		default:
 			t.Fatalf("unexpected data type: %T", d)

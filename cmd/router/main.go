@@ -13,7 +13,7 @@ import (
 )
 
 const tileSize = 0.25 //degree
-const maxCacheSize = 100
+const maxCacheSize = 200
 
 func main() {
 	configPath := flag.String("config", "config.json", "path to config file")

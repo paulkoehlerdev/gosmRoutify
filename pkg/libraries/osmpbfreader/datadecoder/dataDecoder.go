@@ -2,6 +2,7 @@ package datadecoder
 
 import (
 	"fmt"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/filter"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/getdata"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmproto"
@@ -13,19 +14,21 @@ const typicalPrimitiveBlockFeatureCount = 8000
 const degMultiplier = 1e-9
 
 type DataDecoder interface {
-	Decode(blob *osmproto.Blob) ([]interface{}, error)
+	Decode(blob *osmproto.Blob, filter filter.Filter) ([]interface{}, error)
 }
 
 type impl struct {
-	data []interface{}
+	data   []interface{}
+	filter filter.Filter
 }
 
 func NewDataDecoder() DataDecoder {
 	return &impl{}
 }
 
-func (i *impl) Decode(blob *osmproto.Blob) ([]interface{}, error) {
+func (i *impl) Decode(blob *osmproto.Blob, filter filter.Filter) ([]interface{}, error) {
 	i.data = make([]interface{}, 0, typicalPrimitiveBlockFeatureCount)
+	i.filter = filter
 
 	data, err := getdata.GetData(blob)
 	if err != nil {
@@ -56,6 +59,10 @@ func (i *impl) parsePrimitiveGroup(block *osmproto.PrimitiveBlock, group *osmpro
 }
 
 func (i *impl) parseNodes(block *osmproto.PrimitiveBlock, nodes []*osmproto.Node) {
+	if i.filter != nil && i.filter.FilterNodes() {
+		return
+	}
+
 	stringTable := block.GetStringtable().GetS()
 	granularity := int64(block.GetGranularity())
 	dateGranularity := int64(block.GetDateGranularity())
@@ -68,13 +75,13 @@ func (i *impl) parseNodes(block *osmproto.PrimitiveBlock, nodes []*osmproto.Node
 		lat := node.GetLat()
 		lon := node.GetLon()
 
-		latitude := degMultiplier * float64((latOffset + (granularity * lat)))
-		longitude := degMultiplier * float64((lonOffset + (granularity * lon)))
+		latitude := degMultiplier * float64(latOffset+(granularity*lat))
+		longitude := degMultiplier * float64(lonOffset+(granularity*lon))
 
 		tags := extractTags(stringTable, node.GetKeys(), node.GetVals())
 		info := extractInfo(stringTable, node.GetInfo(), dateGranularity)
 
-		i.data = append(i.data, &osmpbfreaderdata.Node{
+		i.data = append(i.data, osmpbfreaderdata.Node{
 			ID:   id,
 			Lat:  latitude,
 			Lon:  longitude,
@@ -86,6 +93,10 @@ func (i *impl) parseNodes(block *osmproto.PrimitiveBlock, nodes []*osmproto.Node
 }
 
 func (i *impl) parseDenseNodes(block *osmproto.PrimitiveBlock, denseNodes *osmproto.DenseNodes) {
+	if i.filter != nil && i.filter.FilterNodes() {
+		return
+	}
+
 	stringTable := block.GetStringtable().GetS()
 	granularity := int64(block.GetGranularity())
 	latOffset := block.GetLatOffset()
@@ -107,12 +118,12 @@ func (i *impl) parseDenseNodes(block *osmproto.PrimitiveBlock, denseNodes *osmpr
 		id = ids[index] + id
 		lat = lats[index] + lat
 		lon = lons[index] + lon
-		latitude := degMultiplier * float64((latOffset + (granularity * lat)))
-		longitude := degMultiplier * float64((lonOffset + (granularity * lon)))
+		latitude := degMultiplier * float64(latOffset+(granularity*lat))
+		longitude := degMultiplier * float64(lonOffset+(granularity*lon))
 		tags := tu.next()
 		info := extractDenseInfo(stringTable, &state, denseinfo, index, dateGranularity)
 
-		i.data = append(i.data, &osmpbfreaderdata.Node{
+		i.data = append(i.data, osmpbfreaderdata.Node{
 			ID:   id,
 			Lat:  latitude,
 			Lon:  longitude,
@@ -123,6 +134,10 @@ func (i *impl) parseDenseNodes(block *osmproto.PrimitiveBlock, denseNodes *osmpr
 }
 
 func (i *impl) parseWays(block *osmproto.PrimitiveBlock, ways []*osmproto.Way) {
+	if i.filter != nil && i.filter.FilterWays() {
+		return
+	}
+
 	stringTable := block.GetStringtable().GetS()
 	dateGranularity := int64(block.GetDateGranularity())
 
@@ -141,7 +156,7 @@ func (i *impl) parseWays(block *osmproto.PrimitiveBlock, ways []*osmproto.Way) {
 
 		info := extractInfo(stringTable, way.GetInfo(), dateGranularity)
 
-		i.data = append(i.data, &osmpbfreaderdata.Way{
+		i.data = append(i.data, osmpbfreaderdata.Way{
 			ID:      id,
 			Tags:    tags,
 			NodeIDs: nodeIDs,
@@ -151,6 +166,10 @@ func (i *impl) parseWays(block *osmproto.PrimitiveBlock, ways []*osmproto.Way) {
 }
 
 func (i *impl) parseRelations(block *osmproto.PrimitiveBlock, relations []*osmproto.Relation) {
+	if i.filter != nil && i.filter.FilterRelations() {
+		return
+	}
+
 	stringTable := block.GetStringtable().GetS()
 	dateGranularity := int64(block.GetDateGranularity())
 
@@ -160,7 +179,7 @@ func (i *impl) parseRelations(block *osmproto.PrimitiveBlock, relations []*osmpr
 		members := extractMembers(stringTable, rel)
 		info := extractInfo(stringTable, rel.GetInfo(), dateGranularity)
 
-		i.data = append(i.data, &osmpbfreaderdata.Relation{
+		i.data = append(i.data, osmpbfreaderdata.Relation{
 			ID:      id,
 			Tags:    tags,
 			Members: members,

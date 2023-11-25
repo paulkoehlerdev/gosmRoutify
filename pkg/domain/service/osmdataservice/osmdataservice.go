@@ -9,7 +9,7 @@ import (
 )
 
 type OsmDataService interface {
-	Process(processor osmdatarepository.OsmDataProcessor) error
+	Process(processor osmdatarepository.OsmDataProcessor, filter osmdatarepository.OsmDataFilter) error
 }
 
 type impl struct {
@@ -26,9 +26,9 @@ func New(osmDataRepository osmdatarepository.OsmDataRepository, filePaths []stri
 	}
 }
 
-func (i *impl) Process(processor osmdatarepository.OsmDataProcessor) error {
+func (i *impl) Process(processor osmdatarepository.OsmDataProcessor, filter osmdatarepository.OsmDataFilter) error {
 	for _, filePath := range i.filePaths {
-		err := i.osmDataRepository.Process(filePath, processor)
+		err := i.osmDataRepository.Process(filePath, processor, filter)
 		if errors.Is(err, io.EOF) {
 			continue
 		}

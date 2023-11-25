@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/blobreader"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/datadecoder"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/filter"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmproto"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/valueerrpair"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/workerpool"
@@ -13,7 +14,7 @@ import (
 type ProcsCount int
 
 type Decoder interface {
-	Start(ProcsCount) error
+	Start(ProcsCount, filter.Filter) error
 	Decode() (any, error)
 }
 
@@ -32,14 +33,14 @@ func New(reader io.Reader) Decoder {
 	}
 }
 
-func (i *impl) Start(count ProcsCount) error {
+func (i *impl) Start(count ProcsCount, filter filter.Filter) error {
 	i.done = make(chan struct{})
 	blobs := make(chan valueerrpair.Pair[*osmproto.Blob], count)
 	pool := workerpool.New[valueerrpair.Pair[[]interface{}]](workerpool.ProcsCount(count))
 	pool.Start()
 
 	go i.blobReader.Read(blobs)
-	go decoderHandler(pool, blobs)
+	go decoderHandler(pool, blobs, filter)
 	go i.decodedBlobHandler(pool)
 
 	go func() {
@@ -69,7 +70,7 @@ func (i *impl) decodedBlobHandler(pool workerpool.Pool[valueerrpair.Pair[[]inter
 	}
 }
 
-func decoderHandler(pool workerpool.Pool[valueerrpair.Pair[[]interface{}]], blobs chan valueerrpair.Pair[*osmproto.Blob]) {
+func decoderHandler(pool workerpool.Pool[valueerrpair.Pair[[]interface{}]], blobs chan valueerrpair.Pair[*osmproto.Blob], filter filter.Filter) {
 	for {
 		blob, ok := <-blobs
 		if !ok {
@@ -84,7 +85,7 @@ func decoderHandler(pool workerpool.Pool[valueerrpair.Pair[[]interface{}]], blob
 		}
 
 		pool.Submit(func(int) valueerrpair.Pair[[]interface{}] {
-			data, err := datadecoder.NewDataDecoder().Decode(blob.Value)
+			data, err := datadecoder.NewDataDecoder().Decode(blob.Value, filter)
 			if err != nil {
 				return valueerrpair.Pair[[]interface{}]{Err: err}
 			}

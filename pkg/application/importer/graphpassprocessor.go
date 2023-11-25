@@ -44,7 +44,7 @@ func NewGraphPassProcessor(logger logging.Logger, nodeService nodeservice.NodeSe
 	}
 }
 
-func (g *GraphPassProcessor) ProcessNode(node *osmpbfreaderdata.Node) {
+func (g *GraphPassProcessor) ProcessNode(node osmpbfreaderdata.Node) {
 	g.nodes++
 	if g.nodes%counterLogBreak == 0 {
 		g.logger.Info().Msgf("Processed %d Mio. nodes, accepted nodes: %d", g.nodes/1000000, g.acceptedNodes)
@@ -80,7 +80,7 @@ func (g *GraphPassProcessor) ProcessNode(node *osmpbfreaderdata.Node) {
 	}
 }
 
-func isBarrierNode(node *osmpbfreaderdata.Node) bool {
+func isBarrierNode(node osmpbfreaderdata.Node) bool {
 	if _, ok := node.Tags["barrier"]; ok {
 		return true
 	}
@@ -90,7 +90,7 @@ func isBarrierNode(node *osmpbfreaderdata.Node) bool {
 	return false
 }
 
-func (g *GraphPassProcessor) ProcessWay(way *osmpbfreaderdata.Way) {
+func (g *GraphPassProcessor) ProcessWay(way osmpbfreaderdata.Way) {
 	g.ways++
 	if g.ways%counterLogBreak == 0 {
 		g.logger.Info().Msgf("Processed %d Mio. ways, accepted ways: %d", g.ways/1000000, g.acceptedWays)
@@ -126,7 +126,7 @@ func (g *GraphPassProcessor) ProcessWay(way *osmpbfreaderdata.Way) {
 	g.splitWayAtJunctionsAndEmptySections(segment, way)
 }
 
-func (g *GraphPassProcessor) splitWayAtJunctionsAndEmptySections(fullSegment []segmentNode, way *osmpbfreaderdata.Way) {
+func (g *GraphPassProcessor) splitWayAtJunctionsAndEmptySections(fullSegment []segmentNode, way osmpbfreaderdata.Way) {
 	var segment []segmentNode
 	for _, node := range fullSegment {
 		if node.nodeType.IsEmpty() {
@@ -155,7 +155,7 @@ func (g *GraphPassProcessor) splitWayAtJunctionsAndEmptySections(fullSegment []s
 	}
 }
 
-func (g *GraphPassProcessor) splitLoopSegments(segmentNodes []segmentNode, way *osmpbfreaderdata.Way) {
+func (g *GraphPassProcessor) splitLoopSegments(segmentNodes []segmentNode, way osmpbfreaderdata.Way) {
 	if len(segmentNodes) < 2 {
 		panic(fmt.Errorf("segmentNodes must have at least 2 elements, but was: %d", len(segmentNodes)))
 	}
@@ -174,7 +174,7 @@ func (g *GraphPassProcessor) splitLoopSegments(segmentNodes []segmentNode, way *
 	g.splitSegmentAtSplitNodes(segmentNodes, way)
 }
 
-func (g *GraphPassProcessor) splitSegmentAtSplitNodes(segmentNodes []segmentNode, way *osmpbfreaderdata.Way) {
+func (g *GraphPassProcessor) splitSegmentAtSplitNodes(segmentNodes []segmentNode, way osmpbfreaderdata.Way) {
 	var segment []segmentNode
 	for _, node := range segmentNodes {
 		if g.nodeService.IsSplitNode(node.osmID) {
@@ -213,7 +213,7 @@ func (g *GraphPassProcessor) splitSegmentAtSplitNodes(segmentNodes []segmentNode
 	}
 }
 
-func (g *GraphPassProcessor) handleSegment(segmentNodes []segmentNode, way *osmpbfreaderdata.Way) {
+func (g *GraphPassProcessor) handleSegment(segmentNodes []segmentNode, way osmpbfreaderdata.Way) {
 
 	coordinateList := coordinatelist.NewCoordinateList(len(segmentNodes))
 
@@ -229,7 +229,8 @@ func (g *GraphPassProcessor) handleSegment(segmentNodes []segmentNode, way *osmp
 	g.edgeHandler(first.osmID, last.osmID, coordinateList, nodeTags, way)
 }
 
-func (g *GraphPassProcessor) ProcessRelation(*osmpbfreaderdata.Relation) {
+func (g *GraphPassProcessor) ProcessRelation(osmpbfreaderdata.Relation) {
+	g.logger.Warn().Msgf("GraphPassProcessor.ProcessRelation() should not be called")
 }
 
 func (g *GraphPassProcessor) OnFinish() {
