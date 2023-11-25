@@ -40,26 +40,35 @@ func New(
 }
 
 func (i *impl) RunDataImport() error {
-	wayPassProcessor := NewWayPassProcessor(i.logger.WithAttrs("processor", "waypass"), i.nodeService, i.osmfilterService)
+	wayPassProcessor := NewWayPassProcessor2(i.logger.WithAttrs("processor", "waypass"), i.osmfilterService)
 
-	err := i.osmdataService.Process(wayPassProcessor)
+	err := i.osmdataService.Process(wayPassProcessor, NewWayPassFilter2())
 	if err != nil {
 		return fmt.Errorf("error while processing way pass: %s", err.Error())
 	}
 
-	i.nodeService.PrintNodeTypeStatistics()
+	/*
+		i.nodeService.PrintNodeTypeStatistics()
 
-	graphPassProcessor := NewGraphPassProcessor(
-		i.logger.WithAttrs("processor", "graphpass"),
-		i.nodeService,
-		i.osmfilterService,
-		i.graphService.AddEdge,
-	)
+		counter := 0
+		outFunc := func(fromID, toID osmid.OsmID, nodeList coordinatelist.CoordinateList, tags []nodetags.NodeTags, way *osmpbfreaderdata.Way) {
+			counter++
+			if counter%counterLogBreak == 0 {
+				i.logger.Info().Msgf("processed %d edges", counter)
+			}
+		}
 
-	err = i.osmdataService.Process(graphPassProcessor)
-	if err != nil {
-		return fmt.Errorf("error while processing graph pass: %s", err.Error())
-	}
+		graphPassProcessor := NewGraphPassProcessor(
+			i.logger.WithAttrs("processor", "graphpass"),
+			i.nodeService,
+			i.osmfilterService,
+			outFunc,
+		)
 
+		err = i.osmdataService.Process(graphPassProcessor)
+		if err != nil {
+			return fmt.Errorf("error while processing graph pass: %s", err.Error())
+		}
+	*/
 	return nil
 }
