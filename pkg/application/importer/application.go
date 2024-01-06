@@ -1,68 +1,79 @@
 package importer
 
 import (
-	"errors"
 	"fmt"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmDataPreprocessorService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmDataService"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmdataservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmfilterservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinatelist"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/nodetags"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
-	"io"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
 )
 
 const counterLogBreak = 1000000
 
 type Importer interface {
-	StartDataImport() error
-	BuildGraph()
+	RunDataImport() error
 }
 
 type impl struct {
-	osmDataService osmDataService.OsmDataService
-	preprocessor   osmDataPreprocessorService.OsmDataPreprocessorService
-	graphService   graphService.GraphService
-	logger         logging.Logger
+	osmdataService   osmdataservice.OsmDataService
+	osmfilterService osmfilterservice.OsmFilterService
+	graphService     graphservice.GraphService
+	nodeService      nodeservice.NodeService
+	logger           logging.Logger
 }
 
-func New(osmDataService osmDataService.OsmDataService, preprocessor osmDataPreprocessorService.OsmDataPreprocessorService, graphService graphService.GraphService, logger logging.Logger) Importer {
+func New(
+	osmDataService osmdataservice.OsmDataService,
+	nodeService nodeservice.NodeService,
+	osmfilterService osmfilterservice.OsmFilterService,
+	graphService graphservice.GraphService,
+	logger logging.Logger,
+) Importer {
 	return &impl{
-		osmDataService: osmDataService,
-		logger:         logger,
-		preprocessor:   preprocessor,
-		graphService:   graphService,
+		logger:           logger,
+		osmdataService:   osmDataService,
+		osmfilterService: osmfilterService,
+		nodeService:      nodeService,
+		graphService:     graphService,
 	}
 }
 
-func (i *impl) StartDataImport() error {
-	counter := 0
+func (i *impl) RunDataImport() error {
+	wayPassProcessor := NewWayPassProcessor(i.logger.WithAttrs("processor", "waypass"), i.nodeService, i.osmfilterService)
 
-	for {
+	err := i.osmdataService.Process(wayPassProcessor, NewWayPassFilter())
+	if err != nil {
+		return fmt.Errorf("error while processing way pass: %s", err.Error())
+	}
+
+	i.nodeService.PrintNodeTypeStatistics()
+
+	counter := 0
+	outFunc := func(fromID, toID osmid.OsmID, nodeList coordinatelist.CoordinateList, tags []nodetags.NodeTags, way osmpbfreaderdata.Way) {
 		counter++
 		if counter%counterLogBreak == 0 {
-			i.logger.Info().Msgf("read %d Mio. elements", counter/counterLogBreak)
+			i.logger.Info().Msgf("processed %d edges", counter)
 		}
 
-		data, err := i.osmDataService.Next()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return fmt.Errorf("error while reading data: %s", err.Error())
-		}
-
-		if i.preprocessor.Filter(data) {
-			continue
-		}
-
-		err = i.graphService.AddOSMData(data)
-		if err != nil {
-			return fmt.Errorf("error while adding data to graph: %s", err.Error())
-		}
+		i.graphService.AddEdge(fromID, toID, nodeList, tags, &way)
 	}
 
-	return io.EOF
-}
+	graphPassProcessor := NewGraphPassProcessor(
+		i.logger.WithAttrs("processor", "graphpass"),
+		i.nodeService,
+		i.osmfilterService,
+		outFunc,
+	)
 
-func (i *impl) BuildGraph() {
-	i.graphService.BuildGraph()
+	err = i.osmdataService.Process(graphPassProcessor, NewGraphPassFilter())
+	if err != nil {
+		return fmt.Errorf("error while processing graph pass: %s", err.Error())
+	}
+
+	return nil
 }

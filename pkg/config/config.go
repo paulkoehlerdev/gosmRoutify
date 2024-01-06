@@ -7,8 +7,10 @@ import (
 )
 
 type Config struct {
-	LoggerConfig *LoggerConfig `json:"logging"`
-	ServerConfig *ServerConfig `json:"server"`
+	LoggerConfig   *LoggerConfig   `json:"logging"`
+	ImporterConfig *ImporterConfig `json:"import"`
+	GraphConfig    *GraphConfig    `json:"graph"`
+	ServerConfig   *ServerConfig   `json:"server"`
 }
 
 func FromFile(path string) (*Config, error) {

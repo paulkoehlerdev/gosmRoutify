@@ -1,65 +1,89 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/importer"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmDataPreprocessorService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmDataService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/infrastructure/graphRepository"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/infrastructure/osmDataRepository"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/infrastructure/temporaryOSMDataRepository"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
-	"io"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/noderepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/osmdatarepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/tilerepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmdataservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmfilterservice"
+	_ "net/http/pprof"
 	"runtime"
 )
 
+const tileSize = 0.12 //degree
+const maxCacheSize = 400
+
 func main() {
-	dataPath := flag.String("data", "./resources/sample/sample.pbf", "path to data file")
-	graphPath := flag.String("graph", "./resources/graph/", "path to graph folder")
+	configPath := flag.String("config", "config.json", "path to config file")
 	flag.Parse()
 
-	logger := logging.New(logging.LevelDebug, logging.NewConsoleWriter())
-
-	if dataPath == nil {
-		logger.Error().Msg("no data file provided")
-		return
+	if configPath == nil {
+		panic("no config file provided")
 	}
 
-	if graphPath == nil {
-		logger.Error().Msg("no graph folder provided")
-		return
-	}
-
-	osmDataRepo := osmDataRepository.New(runtime.GOMAXPROCS(-1))
-
-	osmDataSvc, err := osmDataService.New(osmDataRepo, []string{*dataPath}, logger.WithAttrs("service", "osmDataService"))
+	config, err := config.FromFile(*configPath)
 	if err != nil {
-		logger.Error().Msgf("error while initializing data service %s", err.Error())
+		panic(fmt.Errorf("error while loading config: %s", err.Error()))
+	}
+
+	logger := config.LoggerConfig.SetupLogger()
+
+	logger.Info().Msg("starting importing engine")
+
+	osmdataRepo := osmdatarepository.New(runtime.GOMAXPROCS(-1))
+	osmdataSvc := osmdataservice.New(
+		osmdataRepo,
+		[]string{config.ImporterConfig.FilePath},
+		logger.WithAttrs("service", "osmdata"),
+	)
+
+	nodeRepo, err := noderepository.New(
+		fmt.Sprintf("%s/gosmRoutifyNodes.db", config.ImporterConfig.TmpFilePath),
+		config.ImporterConfig.EnableDiskStorage,
+		logger.WithAttrs("repository", "node"),
+	)
+	if err != nil {
+		logger.Error().Msgf("error while creating node repository: %s", err.Error())
 		return
 	}
 
-	preprocessorSvc := osmDataPreprocessorService.New()
+	nodeSvc := nodeservice.New(nodeRepo, logger.WithAttrs("service", "node"))
 
-	tempOSMRepo := temporaryOSMDataRepository.New(fmt.Sprintf("%s/tmp/", *graphPath), logger.WithAttrs("service", "temporaryOSMDataRepository"))
-	graphRepo := graphRepository.New(*graphPath, logger.WithAttrs("service", "graphRepository"))
+	osmfilterSvc := osmfilterservice.New([]string{})
 
-	graphSvc := graphService.New(graphRepo, tempOSMRepo, logger.WithAttrs("service", "graphService"))
+	tileRepo := tilerepository.New(
+		logger.WithAttrs("repository", "tile"),
+		tileSize,
+		config.GraphConfig.Path,
+		maxCacheSize,
+	)
 
-	application := importer.New(osmDataSvc, preprocessorSvc, graphSvc, logger.WithAttrs("service", "application"))
-	err = application.StartDataImport()
-	if errors.Is(err, io.EOF) {
-		logger.Info().Msg("finished importing data")
-	} else if err != nil {
-		logger.Error().Msgf("error while importing data %s", err.Error())
+	graphSvc := graphservice.New(tileRepo, logger.WithAttrs("service", "graph"))
+
+	application := importer.New(
+		osmdataSvc,
+		nodeSvc,
+		osmfilterSvc,
+		graphSvc,
+		logger.WithAttrs("application", "importer"),
+	)
+
+	err = application.RunDataImport()
+	if err != nil {
+		logger.Error().Msgf("error while running data import: %s", err.Error())
 		return
 	}
 
-	application.BuildGraph()
+	err = nodeRepo.Close()
+	if err != nil {
+		logger.Error().Msgf("error while closing node repository: %s", err.Error())
+	}
 
-	logger.Info().Msg("stopping service")
-
-	osmDataRepo.Stop()
+	tileRepo.Close()
 }

@@ -2,7 +2,7 @@
   <configuration default="false" name="Run router" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="gosmRoutify" />
     <working_directory value="$PROJECT_DIR$" />
-    <parameters value="-config config.json -graph ./resources/graph/" />
+    <parameters value="-config config.json" />
     <kind value="PACKAGE" />
     <package value="github.com/paulkoehlerdev/gosmRoutify/cmd/router" />
     <directory value="$PROJECT_DIR$" />
