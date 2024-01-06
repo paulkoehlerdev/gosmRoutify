@@ -14,3 +14,14 @@ Da [`protobuf`](https://github.com/protocolbuffers/protobuf) exzellent von Golan
 
 ## Die Pipeline
 
+Die Pipeline besteht aus 3 einfachen Schritten:
+
+- Lesen des `protobuf`
+- Transformieren der Daten in den Graphen
+- Schreiben des Graphen in das Dateisystem
+
+Um die Daten seriell lesen zu können und mit möglichst geringem zusätzlichen Speicheraufwand in den Graphen Transformieren zu können wird die ursprüngliche OSM-Datei zweimal durchlaufen.
+
+Dabei werden im ersten Durchgang für jeden relevanten Weg die dazugehörigen OSM-IDs gespeichert. Hierbei ergeben sich bereits alle knoten und kanten des Graphen, jedoch fehlt die Georeferenz dessen noch völlig.  
+
+Dafür werden die Dateien ein zweites mal durchlaufen, wobei für alle relevanten Nodes die Koordinaten und Tags gespeichert werden.
