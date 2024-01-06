@@ -1,5 +1,8 @@
 # gosmRoutify
 
+> [!CAUTION]
+> This project is a work in progress.
+
 > [!IMPORTANT]
 > This project does not try to be a full-fledged routing engine.
 > It's a simple development project to learn about routing algorithms and data structures. \
