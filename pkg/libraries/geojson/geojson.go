@@ -124,14 +124,14 @@ func (l LineString) ToGeometry() Geometry {
 type Point [2]float64
 
 func NewPoint(lat float64, lon float64) Point {
-	return Point{lon, lat}
-}
-
-func (p Point) Lat() float64 {
-	return p[1]
+	return Point{lat, lon}
 }
 
 func (p Point) Lon() float64 {
+	return p[1]
+}
+
+func (p Point) Lat() float64 {
 	return p[0]
 }
 

@@ -1,13 +1,16 @@
 package noderepository
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/nodetype"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinatelist"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/kvstorage"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
+	"math"
 )
 
 const minNodeCapacity = 1 << 16
@@ -24,58 +27,66 @@ type NodeRepository interface {
 	IsSplitNode(osmID osmid.OsmID) bool
 	UnsetSplitNode(osmID osmid.OsmID)
 	CalcNodeTypeStatistics() map[nodetype.NodeType]int
+	Close() error
 }
 
 type impl struct {
 	logger         logging.Logger
-	nodes          map[osmid.OsmID]nodeIndex
-	towerNodes     coordinatelist.CoordinateList
-	pillarNodes    coordinatelist.CoordinateList
-	nodeTags       kvstorage.KVStorage[nodeIndex, map[string]string]
+	nodeTypes      map[osmid.OsmID]nodetype.NodeType
+	database       kvstorage.KVStorage[int64, []byte]
+	nodeTags       kvstorage.Collection[int64, []byte]
+	coordinates    kvstorage.Collection[int64, []byte]
 	nodesToBeSplit map[osmid.OsmID]struct{}
 }
 
-func New(logger logging.Logger) NodeRepository {
-	return &impl{
+func New(dbPath string, enableDiskStorage bool, logger logging.Logger) (NodeRepository, error) {
+	kvStorageConstructor := kvstorage.New[int64, []byte]
+	if !enableDiskStorage {
+		kvStorageConstructor = kvstorage.NewRam[int64, []byte]
+	}
+
+	database, err := kvStorageConstructor(dbPath, kvstorage.DefaultKVStorageOptions())
+	if err != nil {
+		return nil, fmt.Errorf("error while creating kvstorage: %s", err.Error())
+	}
+
+	nodeTagsCollection, err := database.GetCollection("nodeTags")
+	if err != nil {
+		nodeTagsCollection, err = database.NewCollection("nodeTags")
+		if err != nil {
+			return nil, fmt.Errorf("error while creating collection: %s", err.Error())
+		}
+	}
+
+	coordinatesCollection, err := database.GetCollection("coordinates")
+	if err != nil {
+		coordinatesCollection, err = database.NewCollection("coordinates")
+		if err != nil {
+			return nil, fmt.Errorf("error while creating collection: %s", err.Error())
+		}
+	}
+
+	repo := &impl{
 		logger:         logger,
-		nodes:          make(map[osmid.OsmID]nodeIndex),
-		towerNodes:     coordinatelist.NewCoordinateList(minNodeCapacity),
-		pillarNodes:    coordinatelist.NewCoordinateList(minNodeCapacity),
-		nodeTags:       kvstorage.NewRamKVStorage[nodeIndex, map[string]string](minNodeCapacity),
+		nodeTypes:      make(map[osmid.OsmID]nodetype.NodeType),
+		database:       database,
+		nodeTags:       nodeTagsCollection,
+		coordinates:    coordinatesCollection,
 		nodesToBeSplit: make(map[osmid.OsmID]struct{}),
 	}
+
+	return repo, nil
 }
 
 func (i *impl) Add(osmID osmid.OsmID, nodeType nodetype.NodeType) {
-	index, err := i.indexFromOsmID(osmID)
-	if err == nil {
-		index, err = newNodeIndex(nodeType, 0)
-		if err != nil {
-			panic(fmt.Errorf("error while creating nodeIndex: %s", err.Error()))
-		}
-	} else {
-		index, err = newNodeIndex(nodeType, index.GetNodeID())
-		if err != nil {
-			panic(fmt.Errorf("error while creating nodeIndex: %s", err.Error()))
-		}
-	}
-
-	i.nodes[osmID] = index
-}
-
-func (i *impl) indexFromOsmID(osmID osmid.OsmID) (nodeIndex, error) {
-	nodeIndex, ok := i.nodes[osmID]
-	if !ok {
-		return 0, fmt.Errorf("node with osmID %d not found", osmID)
-	}
-	return nodeIndex, nil
+	i.nodeTypes[osmID] = nodeType
 }
 
 func (i *impl) AddOrUpdate(osmID osmid.OsmID, newNodeType nodetype.NodeType, updateFunc func(nodeType nodetype.NodeType) nodetype.NodeType) {
-	nodeType := nodetype.EMPTYNODE
-	index, err := i.indexFromOsmID(osmID)
-	if err == nil {
-		nodeType = index.GetNodeType()
+	nodeType, ok := i.nodeTypes[osmID]
+	if !ok {
+		i.Add(osmID, newNodeType)
+		return
 	}
 
 	if nodeType == nodetype.EMPTYNODE {
@@ -87,90 +98,105 @@ func (i *impl) AddOrUpdate(osmID osmid.OsmID, newNodeType nodetype.NodeType, upd
 }
 
 func (i *impl) GetNodeType(osmID osmid.OsmID) nodetype.NodeType {
-	index, err := i.indexFromOsmID(osmID)
-	if err != nil {
+	nodeType, ok := i.nodeTypes[osmID]
+	if !ok {
 		return nodetype.EMPTYNODE
 	}
-
-	return index.GetNodeType()
+	return nodeType
 }
 
 func (i *impl) SetCoordinate(osmID osmid.OsmID, coordinate coordinate.Coordinate) nodetype.NodeType {
-	nodeType := nodetype.EMPTYNODE
-	index, err := i.indexFromOsmID(osmID)
-	if err == nil {
-		nodeType = index.GetNodeType()
+	nodeType, ok := i.nodeTypes[osmID]
+	if !ok {
+		return nodetype.EMPTYNODE
 	}
 
-	if nodeType.IsTowerNode() {
-		index, err = newNodeIndex(nodeType, i.addTowerNode(coordinate))
-		if err != nil {
-			panic(fmt.Errorf("error while creating nodeIndex: %s", err.Error()))
-		}
-	} else if nodeType.IsPillarNode() {
-		index, err = newNodeIndex(nodeType, i.addPillarNode(coordinate))
-		if err != nil {
-			panic(fmt.Errorf("error while creating nodeIndex: %s", err.Error()))
-		}
+	buf := make([]byte, 16)
+	binary.LittleEndian.PutUint64(buf[0:8], math.Float64bits(coordinate.Lat()))
+	binary.LittleEndian.PutUint64(buf[8:16], math.Float64bits(coordinate.Lon()))
+
+	err := i.coordinates.Set(int64(osmID), buf)
+	if err != nil {
+		i.logger.Error().Msgf("error while setting coordinate: %s", err.Error())
 	}
 
-	i.nodes[osmID] = index
-	return index.GetNodeType()
+	return nodeType
 }
 
 func (i *impl) GetCoordinate(osmID osmid.OsmID) (coordinate.Coordinate, error) {
-	index, err := i.indexFromOsmID(osmID)
+	_, ok := i.nodeTypes[osmID]
+	if !ok {
+		return coordinate.Coordinate{}, fmt.Errorf("error while getting coordinate: node not found")
+	}
+
+	bufptr, err := i.coordinates.Get(int64(osmID))
 	if err != nil {
 		return coordinate.Coordinate{}, fmt.Errorf("error while getting coordinate: %s", err.Error())
 	}
 
-	nodeType := index.GetNodeType()
-
-	if nodeType.IsTowerNode() {
-		return i.towerNodes.Get(index.GetNodeID()), nil
+	if bufptr == nil {
+		return coordinate.Coordinate{}, fmt.Errorf("error while getting coordinate: coordinate not found")
 	}
+	buf := *bufptr
 
-	if nodeType.IsPillarNode() {
-		return i.pillarNodes.Get(index.GetNodeID()), nil
-	}
+	lat := binary.LittleEndian.Uint64(buf[0:8])
+	lon := binary.LittleEndian.Uint64(buf[8:16])
 
-	return coordinate.Coordinate{}, fmt.Errorf("error while getting coordinate: unknown node type %d", index.GetNodeType())
-}
+	coo := coordinate.New(math.Float64frombits(lat), math.Float64frombits(lon))
 
-func (i *impl) addTowerNode(coordinate coordinate.Coordinate) uint64 {
-	id := i.towerNodes.Len()
-	i.towerNodes.Append(coordinate)
-	return id
-}
-
-func (i *impl) addPillarNode(coordinate coordinate.Coordinate) uint64 {
-	id := i.pillarNodes.Len()
-	i.pillarNodes.Append(coordinate)
-	return id
+	return coo, nil
 }
 
 func (i *impl) SetTags(osmID osmid.OsmID, tags map[string]string) error {
-	index, err := i.indexFromOsmID(osmID)
-	if err != nil {
-		return fmt.Errorf("error while setting tags: %s", err.Error())
+
+	nodeType, ok := i.nodeTypes[osmID]
+	if !ok {
+		return fmt.Errorf("error while setting tags: node not found")
 	}
 
-	if err := i.nodeTags.Set(index, tags); err != nil {
-		return fmt.Errorf("error while setting tags: %s", err.Error())
+	if nodeType == nodetype.EMPTYNODE {
+		return fmt.Errorf("error while setting tags: node not found")
+	}
+
+	buf := bytes.Buffer{}
+	err := gob.NewEncoder(&buf).Encode(tags)
+	if err != nil {
+		return fmt.Errorf("error while parsing tags: %s", err.Error())
+	}
+
+	err = i.nodeTags.Set(int64(osmID), buf.Bytes())
+	if err != nil {
+		i.logger.Error().Msgf("error while setting tags: %s", err.Error())
 	}
 
 	return nil
 }
 
 func (i *impl) GetTags(osmID osmid.OsmID) (map[string]string, error) {
-	index, err := i.indexFromOsmID(osmID)
+	nodeType, ok := i.nodeTypes[osmID]
+	if !ok {
+		return nil, fmt.Errorf("error while getting tags: node not found")
+	}
+
+	if nodeType == nodetype.EMPTYNODE {
+		return nil, fmt.Errorf("error while getting tags: node not found")
+	}
+
+	bufptr, err := i.nodeTags.Get(int64(osmID))
 	if err != nil {
 		return nil, fmt.Errorf("error while getting tags: %s", err.Error())
 	}
 
-	tags, err := i.nodeTags.Get(index)
+	if bufptr == nil {
+		return nil, fmt.Errorf("error while getting tags: tagsChan were nil")
+	}
+
+	tags := make(map[string]string)
+
+	buf := *bufptr
+	err = gob.NewDecoder(bytes.NewReader(buf)).Decode(&tags)
 	if err != nil {
-		return nil, fmt.Errorf("error while getting tags: %s", err.Error())
+		return nil, fmt.Errorf("error while parsing tagsChan: %s", err.Error())
 	}
 
 	return tags, nil
@@ -191,11 +217,20 @@ func (i *impl) UnsetSplitNode(osmID osmid.OsmID) {
 
 func (i *impl) CalcNodeTypeStatistics() map[nodetype.NodeType]int {
 	statistics := make(map[nodetype.NodeType]int)
-	for _, nodeIndex := range i.nodes {
-		if _, ok := statistics[nodeIndex.GetNodeType()]; !ok {
-			statistics[nodeIndex.GetNodeType()] = 0
+	for _, nodeType := range i.nodeTypes {
+		if _, ok := statistics[nodeType]; !ok {
+			statistics[nodeType] = 0
 		}
-		statistics[nodeIndex.GetNodeType()]++
+		statistics[nodeType]++
 	}
 	return statistics
+}
+
+func (i *impl) Close() error {
+	err := i.database.Close()
+	if err != nil {
+		return fmt.Errorf("error while closing database: %s", err.Error())
+	}
+
+	return nil
 }

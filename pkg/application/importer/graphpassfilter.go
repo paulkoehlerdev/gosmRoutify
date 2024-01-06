@@ -5,12 +5,12 @@ import "github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/osmdatarepos
 type GraphPassFilter struct {
 }
 
-func NewWayGraphPassFilter() osmdatarepository.OsmDataFilter {
+func NewGraphPassFilter() osmdatarepository.OsmDataFilter {
 	return &GraphPassFilter{}
 }
 
 func (w *GraphPassFilter) FilterNodes() bool {
-	return true
+	return false
 }
 
 func (w *GraphPassFilter) FilterWays() bool {
