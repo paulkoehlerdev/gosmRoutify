@@ -3,9 +3,48 @@ package osmdatarepository
 import (
 	"errors"
 	"fmt"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/filter"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/osmpbfreader/osmpbfreaderdata"
 	"io"
 )
+
+type OsmDataProcessor interface {
+	ProcessNode(node osmpbfreaderdata.Node)
+	ProcessWay(way osmpbfreaderdata.Way)
+	ProcessRelation(relation osmpbfreaderdata.Relation)
+
+	OnFinish()
+}
+
+type OsmDataFilter interface {
+	filter.Filter
+}
+
+type BinaryOsmDataFilter struct {
+	filterNodes     bool
+	filterWays      bool
+	filterRelations bool
+}
+
+func NewBinaryOsmDataFilter(filterNodes bool, filterWays bool, filterRelations bool) OsmDataFilter {
+	return &BinaryOsmDataFilter{
+		filterNodes:     filterNodes,
+		filterWays:      filterWays,
+		filterRelations: filterRelations,
+	}
+}
+
+func (i *BinaryOsmDataFilter) FilterNodes() bool {
+	return i.filterNodes
+}
+
+func (i *BinaryOsmDataFilter) FilterWays() bool {
+	return i.filterWays
+}
+
+func (i *BinaryOsmDataFilter) FilterRelations() bool {
+	return i.filterRelations
+}
 
 type OsmDataRepository interface {
 	Process(file string, processor OsmDataProcessor, filter OsmDataFilter) error

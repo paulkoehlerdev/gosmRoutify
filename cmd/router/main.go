@@ -1,3 +1,6 @@
+//go:build json && fts5
+// +build json,fts5
+
 package main
 
 import (
@@ -5,14 +8,12 @@ import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/tilerepository"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/weightingservice"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/interface/http"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/database"
 )
-
-const tileSize = 0.12 //degree
-const maxCacheSize = 400
 
 func main() {
 	configPath := flag.String("config", "config.json", "path to config file")
@@ -29,20 +30,35 @@ func main() {
 
 	logger := config.LoggerConfig.SetupLogger()
 
-	logger.Info().Msg("starting routing engine")
+	logger.Info().Msgf("Database file: %s", config.DatabaseConfig.FilePath)
+	db, err := database.New(config.DatabaseConfig.FilePath)
+	if err != nil {
+		logger.Error().Msgf("error while creating database: %s", err.Error())
+		return
+	}
+	defer db.Close()
 
-	tileRepo := tilerepository.New(
-		logger.WithAttrs("repository", "tile"),
-		tileSize,
-		config.GraphConfig.Path,
-		maxCacheSize,
-	)
+	nodeRepo := nodeRepository.New(db)
+	err = nodeRepo.Init()
+	if err != nil {
+		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
+		return
+	}
 
-	graphSvc := graphservice.New(tileRepo, logger.WithAttrs("service", "graph"))
+	// nodeSvc := nodeService.New(nodeRepo)
 
-	weightingSvc := weightingservice.New()
+	wayRepo := wayRepository.New(db)
+	err = wayRepo.Init()
+	if err != nil {
+		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
+		return
+	}
 
-	application := router.New(graphSvc, weightingSvc, logger.WithAttrs("application", "router"))
+	// waySvc := wayService.New(wayRepo)
+
+	graphSvc := graphService.New(nodeRepo, wayRepo, logger.WithAttrs("service", "graph"))
+
+	application := router.New(graphSvc, logger.WithAttrs("application", "loader"))
 
 	server, err := http.NewHttpServer(logger.WithAttrs("service", "interfaceHTTP"), application, config.ServerConfig)
 	if err != nil {

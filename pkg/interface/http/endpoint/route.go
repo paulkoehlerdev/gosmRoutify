@@ -3,7 +3,6 @@ package endpoint
 import (
 	"encoding/json"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"net/http"
@@ -42,7 +41,7 @@ func (r RouteEndpointHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	route, err := r.application.FindRoute(coordinate.New(start.Lat(), start.Lon()), coordinate.New(end.Lat(), end.Lon()))
+	route, err := r.application.FindRoute(start, end)
 	if err != nil {
 		r.logger.Debug().Msgf("error while finding route: %s", err.Error())
 		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -50,10 +49,7 @@ func (r RouteEndpointHandler) ServeHTTP(writer http.ResponseWriter, request *htt
 	}
 
 	gJson := geojson.NewEmptyGeoJson()
-	lineString := make(geojson.LineString, len(route))
-	for i, coord := range route {
-		lineString[i] = geojson.NewPoint(coord.Lat(), coord.Lon())
-	}
+	lineString := geojson.LineString(route)
 	gJson.AddFeature(geojson.NewFeature(lineString.ToGeometry()))
 
 	geoJSONBytes, err := json.Marshal(gJson)

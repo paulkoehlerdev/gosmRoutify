@@ -2,56 +2,55 @@ package router
 
 import (
 	"fmt"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphservice"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/weightingservice"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/coordinate"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/value/osmid"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/astar"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geodistance"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
-	"math"
 	"time"
 )
 
 type Application interface {
-	FindRoute(start coordinate.Coordinate, end coordinate.Coordinate) ([]coordinate.Coordinate, error)
+	FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error)
 }
 
 type impl struct {
-	logger           logging.Logger
-	graphService     graphservice.GraphService
-	weightingService weightingservice.WeightingService
+	logger       logging.Logger
+	graphService graphService.GraphService
 }
 
-func New(graphService graphservice.GraphService, weightingService weightingservice.WeightingService, logger logging.Logger) Application {
+func New(graphService graphService.GraphService, logger logging.Logger) Application {
 	return &impl{
-		logger:           logger,
-		graphService:     graphService,
-		weightingService: weightingService,
+		logger:       logger,
+		graphService: graphService,
 	}
 }
 
-type GraphInfo struct {
-	coo coordinate.Coordinate
-}
-
-func (i *impl) FindRoute(start coordinate.Coordinate, end coordinate.Coordinate) ([]coordinate.Coordinate, error) {
+func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error) {
 	startTime := time.Now()
-	startTile := i.graphService.GetTile(start)
-	endTile := i.graphService.GetTile(end)
-	i.logger.Debug().Msgf("calculated nearest tiles in %s", time.Since(startTime).String())
 
-	if startTile == nil {
-		return nil, fmt.Errorf("start tile not found")
+	startNode, err := i.graphService.GetNearestNode(start.Lon(), start.Lat())
+	if err != nil {
+		return nil, fmt.Errorf("error while finding nearest node at start: %s", err.Error())
 	}
 
-	if endTile == nil {
-		return nil, fmt.Errorf("end tile not found")
+	endNode, err := i.graphService.GetNearestNode(end.Lon(), end.Lat())
+	if err != nil {
+		return nil, fmt.Errorf("error while finding nearest node at end: %s", err.Error())
 	}
 
-	startTime = time.Now()
+	i.logger.Debug().Msgf("calculated nearest node in %s", time.Since(startTime).String())
+
+	return []geojson.Point{
+		start,
+		geojson.NewPoint(startNode.Lon, startNode.Lat),
+		geojson.NewPoint(endNode.Lon, endNode.Lat),
+		end,
+	}, nil
+}
+
+/*
 	startID := i.graphService.FindNearest(start)
 	endID := i.graphService.FindNearest(end)
+
 	i.logger.Debug().Msgf("calculated nearest nodes in %s", time.Since(startTime).String())
 
 	if startID == nil {
@@ -143,3 +142,4 @@ func (i *impl) GetNeighbors(infoMap map[osmid.OsmID]*GraphInfo) func(info osmid.
 		return neighbors
 	}
 }
+*/
