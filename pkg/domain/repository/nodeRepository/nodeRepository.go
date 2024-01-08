@@ -13,6 +13,7 @@ import (
 type NodeRepository interface {
 	Init() error
 	InsertNode(node node.Node) error
+	InsertNodes(nodes []node.Node) error
 
 	SelectNodeIDsFromWay(wayID int64) ([]int64, error)
 	SelectNodesFromWay(wayID int64) ([]*node.Node, error)
@@ -124,6 +125,38 @@ func (i *impl) InsertNode(node node.Node) error {
 	_, err = i.preparedStatements.insertNode.Exec(node.OsmID, node.Lat, node.Lon, tags)
 	if err != nil {
 		return fmt.Errorf("error while inserting node: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (i *impl) InsertNodes(nodes []node.Node) error {
+	if i.preparedStatements.insertNode == nil {
+		return fmt.Errorf("statements not prepared: you need to call Init() before you can call InsertNode()")
+	}
+
+	tx, err := i.db.Begin()
+	if err != nil {
+		return fmt.Errorf("error while starting transaction: %s", err.Error())
+	}
+
+	insertNode := tx.Stmt(i.preparedStatements.insertNode)
+
+	for _, node := range nodes {
+		tags, err := i.encodeTags(node.Tags)
+		if err != nil {
+			return fmt.Errorf("error while encoding tags: %s", err.Error())
+		}
+
+		_, err = insertNode.Exec(node.OsmID, node.Lat, node.Lon, tags)
+		if err != nil {
+			return fmt.Errorf("error while inserting node: %s", err.Error())
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error while committing transaction: %s", err.Error())
 	}
 
 	return nil

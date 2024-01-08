@@ -35,7 +35,7 @@ func (i *secondPassProcessor) ProcessNode(node osmpbfreaderdata.Node) {
 
 	i.nodeCount++
 	if i.nodeCount%100000 == 0 {
-		i.logger.Info().Msgf("Inserted %d nodes", i.nodeCount)
+		i.logger.Info().Msgf("Inserted %d nodes, accepted %d", i.nodeCount, i.acceptedNodeCount)
 	}
 
 	ways, err := i.wayService.SelectWayIDsFromNode(newNode.OsmID)
@@ -45,7 +45,7 @@ func (i *secondPassProcessor) ProcessNode(node osmpbfreaderdata.Node) {
 
 	i.acceptedNodeCount++
 
-	err = i.nodeService.InsertNode(newNode)
+	err = i.nodeService.InsertNodeBulk(newNode)
 	if err != nil {
 		i.logger.Error().Msgf("Error while inserting node: %s", err.Error())
 		return
@@ -58,4 +58,10 @@ func (i *secondPassProcessor) ProcessRelation(_ osmpbfreaderdata.Relation) {
 }
 
 func (i *secondPassProcessor) OnFinish() {
+	err := i.nodeService.CommitBulkInsert()
+	if err != nil {
+		i.logger.Error().Msgf("Error while committing bulk insert: %s", err.Error())
+		return
+	}
+	i.logger.Info().Msgf("Inserted %d nodes, accepted %d", i.nodeCount, i.acceptedNodeCount)
 }

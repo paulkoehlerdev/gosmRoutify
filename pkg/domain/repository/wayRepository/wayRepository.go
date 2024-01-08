@@ -14,6 +14,8 @@ type WayRepository interface {
 	Init() error
 	InsertWay(node way.Way) error
 
+	InsertWays(ways []way.Way) error
+
 	SelectWayIDsFromNode(nodeID int64) ([]int64, error)
 }
 
@@ -106,40 +108,49 @@ func decodeTags(buf bytes.Buffer) (map[string]string, error) {
 	return tags, nil
 }
 
-func (i *impl) insertWayToNodeRelation(nodeID int64, wayID int64) error {
-	if i.preparedStatements.insertWayToNodeRelation == nil {
-		return fmt.Errorf("statements not prepared: you need to call Init() before you can call InsertNode()")
-	}
-
-	_, err := i.preparedStatements.insertWayToNodeRelation.Exec(nodeID, wayID)
-	if err != nil {
-		return fmt.Errorf("error while inserting way to node relation: %s", err.Error())
-	}
-
-	return nil
+func (i *impl) InsertWay(w way.Way) error {
+	return i.InsertWays([]way.Way{w})
 }
 
-func (i *impl) InsertWay(way way.Way) error {
+func (i *impl) InsertWays(ways []way.Way) error {
 	if i.preparedStatements.insertWay == nil {
 		return fmt.Errorf("statements not prepared: you need to call Init() before you can call InsertNode()")
 	}
 
-	tags, err := i.encodeTags(way.Tags)
-	if err != nil {
-		return fmt.Errorf("error while encoding tags: %s", err.Error())
+	if i.preparedStatements.insertWayToNodeRelation == nil {
+		return fmt.Errorf("statements not prepared: you need to call Init() before you can call InsertNode()")
 	}
 
-	_, err = i.preparedStatements.insertWay.Exec(way.OsmID, tags)
+	tx, err := i.db.Begin()
 	if err != nil {
-		return fmt.Errorf("error while inserting way: %s", err.Error())
+		return fmt.Errorf("error while starting transaction: %s", err.Error())
 	}
 
-	for _, nodeId := range way.Nodes {
-		//TODO: this may be parallelized with another sqlite driver or connection pool
-		err = i.insertWayToNodeRelation(nodeId, way.OsmID)
+	insertWay := tx.Stmt(i.preparedStatements.insertWay)
+	insertWayToNodeRelation := tx.Stmt(i.preparedStatements.insertWayToNodeRelation)
+
+	for _, way := range ways {
+		tags, err := i.encodeTags(way.Tags)
 		if err != nil {
-			return fmt.Errorf("error while inserting way to node relation: %s", err.Error())
+			return fmt.Errorf("error while encoding tags: %s", err.Error())
 		}
+
+		_, err = insertWay.Exec(way.OsmID, tags)
+		if err != nil {
+			return fmt.Errorf("error while inserting way: %s", err.Error())
+		}
+
+		for _, nodeId := range way.Nodes {
+			_, err = insertWayToNodeRelation.Exec(nodeId, way.OsmID)
+			if err != nil {
+				return fmt.Errorf("error while inserting way to node relation: %s", err.Error())
+			}
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error while committing transaction: %s", err.Error())
 	}
 
 	return nil

@@ -57,7 +57,7 @@ func main() {
 		return
 	}
 
-	nodeSvc := nodeService.New(nodeRepo)
+	nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
 
 	application := loader.New(osmdataSvc, nodeSvc, waySvc, logger.WithAttrs("application", "loader"))
 

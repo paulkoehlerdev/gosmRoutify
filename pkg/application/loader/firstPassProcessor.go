@@ -45,7 +45,7 @@ func (i *firstPassProcessor) ProcessWay(way osmpbfreaderdata.Way) {
 
 	i.acceptedWayCount++
 
-	err := i.wayService.InsertWay(newWay)
+	err := i.wayService.InsertWayBulk(newWay)
 	if err != nil {
 		i.logger.Error().Msgf("Error while inserting way: %s", err.Error())
 		return
@@ -56,4 +56,8 @@ func (i *firstPassProcessor) ProcessRelation(_ osmpbfreaderdata.Relation) {
 }
 
 func (i *firstPassProcessor) OnFinish() {
+	err := i.wayService.CommitBulkInsert()
+	if err != nil {
+		i.logger.Error().Msgf("Error while committing bulk insert: %s", err.Error())
+	}
 }

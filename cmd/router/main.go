@@ -45,7 +45,7 @@ func main() {
 		return
 	}
 
-	// nodeSvc := nodeService.New(nodeRepo)
+	// nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
 
 	wayRepo := wayRepository.New(db)
 	err = wayRepo.Init()
