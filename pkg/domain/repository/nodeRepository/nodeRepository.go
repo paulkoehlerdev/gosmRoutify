@@ -15,6 +15,8 @@ type NodeRepository interface {
 	InsertNode(node node.Node) error
 	InsertNodes(nodes []node.Node) error
 
+	SelectNodeFromID(id int64) (*node.Node, error)
+
 	SelectNodeIDsFromWay(wayID int64) ([]int64, error)
 	SelectNodesFromWay(wayID int64) ([]*node.Node, error)
 
@@ -30,6 +32,8 @@ type impl struct {
 
 type preparedStatements struct {
 	insertNode *sql.Stmt
+
+	selectNodeFromID *sql.Stmt
 
 	selectNodesFromWayID   *sql.Stmt
 	selectNodeIDsFromWayID *sql.Stmt
@@ -78,7 +82,14 @@ func (i *impl) prepareStatements() error {
 		return fmt.Errorf("error while preparing select nodes from way statement: %s", err.Error())
 	}
 
+	selectNodeFromID, err := i.db.Prepare(selectNodeFromID)
+	if err != nil {
+		return fmt.Errorf("error while preparing select from nodeid statement: %s", err.Error())
+	}
+
 	i.preparedStatements.insertNode = insertNode
+
+	i.preparedStatements.selectNodeFromID = selectNodeFromID
 
 	i.preparedStatements.selectNodeIDsFromWayID = selectNodeIDsFromWayID
 	i.preparedStatements.selectNodesFromWayID = selectNodesFromWayID
@@ -160,6 +171,24 @@ func (i *impl) InsertNodes(nodes []node.Node) error {
 	}
 
 	return nil
+}
+
+func (i *impl) SelectNodeFromID(id int64) (*node.Node, error) {
+	if i.preparedStatements.selectNodeFromID == nil {
+		return nil, fmt.Errorf("statements not prepared: you need to call Init() before you can call SelectNodeFromID()")
+	}
+
+	rows, err := i.preparedStatements.selectNodeFromID.Query(id)
+	if err != nil {
+		return nil, fmt.Errorf("error while querying nodes from way: %s", err.Error())
+	}
+
+	nodes, err := decodeNodes(rows)
+	if err != nil {
+		return nil, fmt.Errorf("error while decoding nodes: %s", err.Error())
+	}
+
+	return nodes[0], nil
 }
 
 func (i *impl) SelectNodeIDsFromWay(wayID int64) ([]int64, error) {

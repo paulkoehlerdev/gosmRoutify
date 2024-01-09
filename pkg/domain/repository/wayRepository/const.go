@@ -37,4 +37,13 @@ SELECT way_id FROM wayToNodeRelation WHERE node_id = ?;
 	selectWaysFromNodeID = `
 SELECT osm_id, tags FROM way JOIN wayToNodeRelation AS relation ON way.osm_id = relation.way_id WHERE relation.node_id = ?;
 `
+
+	selectWaysFromTwoNodeIDs = `
+SELECT way.osm_id, way.tags
+FROM way
+ JOIN wayToNodeRelation AS rel1 ON rel1.way_id = way.osm_id
+ JOIN wayToNodeRelation AS rel2 ON rel2.way_id = way.osm_id
+WHERE rel1.node_id = ?
+  AND rel2.node_id = ?;
+`
 )

@@ -2,6 +2,7 @@ package astar
 
 import (
 	"fmt"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/arrayutil"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/priorityQueue"
 	"golang.org/x/exp/constraints"
 )
@@ -47,5 +48,5 @@ func generatePath[K comparable](parent map[K]K, end K) []K {
 	for current, ok := end, true; ok; current, ok = parent[current] {
 		path = append(path, current)
 	}
-	return path
+	return arrayutil.Reverse(path)
 }

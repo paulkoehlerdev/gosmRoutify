@@ -17,6 +17,10 @@ INSERT INTO node (osm_id, lat, lon, tags) VALUES (?, ?, ?, ?)
 	ON CONFLICT (osm_id) DO UPDATE SET lat = excluded.lat, lon = excluded.lon, tags = excluded.tags;
 `
 
+	selectNodeFromID = `
+SELECT osm_id, lat, lon, tags FROM node WHERE osm_id = ?;
+`
+
 	selectNodeIDsFromWayID = `
 SELECT node_id FROM wayToNodeRelation WHERE way_id = ?;
 `

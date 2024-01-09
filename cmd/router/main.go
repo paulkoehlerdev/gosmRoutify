@@ -10,7 +10,9 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/weightRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/interface/http"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/database"
 )
@@ -45,7 +47,7 @@ func main() {
 		return
 	}
 
-	// nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
+	nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
 
 	wayRepo := wayRepository.New(db)
 	err = wayRepo.Init()
@@ -56,9 +58,11 @@ func main() {
 
 	// waySvc := wayService.New(wayRepo)
 
-	graphSvc := graphService.New(nodeRepo, wayRepo, logger.WithAttrs("service", "graph"))
+	weightRepo := weightRepository.New(logger.WithAttrs("repository", "weight"))
 
-	application := router.New(graphSvc, logger.WithAttrs("application", "loader"))
+	graphSvc := graphService.New(nodeRepo, wayRepo, weightRepo, logger.WithAttrs("service", "graph"))
+
+	application := router.New(graphSvc, nodeSvc, logger.WithAttrs("application", "loader"))
 
 	server, err := http.NewHttpServer(logger.WithAttrs("service", "interfaceHTTP"), application, config.ServerConfig)
 	if err != nil {
