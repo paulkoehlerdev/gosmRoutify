@@ -47,7 +47,11 @@ func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Poin
 
 	i.logger.Debug().Msgf("calculated nearest node in %s", time.Since(startTime).String())
 
-	path, length, err := astar.AStar[int64, float64](startNode.OsmID, endNode.OsmID, i.graphService.GetEdges, i.graphService.GetHeuristic(endNode), maxVisitedNodes)
+	if endNode == nil {
+		return nil, fmt.Errorf("no end node found")
+	}
+
+	path, length, err := astar.AStar[int64, float64](startNode.OsmID, endNode.OsmID, i.graphService.GetEdges(*endNode), i.graphService.GetHeuristic(*endNode), maxVisitedNodes)
 	if err != nil {
 		return nil, fmt.Errorf("error while routing: %s", err.Error())
 	}

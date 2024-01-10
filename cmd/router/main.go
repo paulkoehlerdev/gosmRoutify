@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/crossingRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/weightRepository"
@@ -58,9 +59,16 @@ func main() {
 
 	// waySvc := wayService.New(wayRepo)
 
+	crossingRepo := crossingRepository.New(db)
+	err = crossingRepo.Init()
+	if err != nil {
+		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
+		return
+	}
+
 	weightRepo := weightRepository.New(logger.WithAttrs("repository", "weight"))
 
-	graphSvc := graphService.New(nodeRepo, wayRepo, weightRepo, logger.WithAttrs("service", "graph"))
+	graphSvc := graphService.New(nodeRepo, crossingRepo, wayRepo, weightRepo, logger.WithAttrs("service", "graph"))
 
 	application := router.New(graphSvc, nodeSvc, logger.WithAttrs("application", "loader"))
 

@@ -44,7 +44,12 @@ func (v VehicleType) calcWayFactor(way way.Way) float64 {
 
 	maxWaySpeed = math.Min(maxWaySpeed, maxVehicleTypeSpeed[v])
 
-	return 1 / (maxWaySpeed * 3.6)
+	highwayClassFactor := 1.0
+	if v == Car {
+		highwayClassFactor = calcCarHighwayClassFactor(way)
+	}
+
+	return 1 / (maxWaySpeed * 3.6 * highwayClassFactor)
 }
 
 func (v VehicleType) String() string {
@@ -91,4 +96,43 @@ func calcMaxSpeed(maxSpeed string) float64 {
 	}
 
 	return minimumSpeedBias
+}
+
+func calcCarHighwayClassFactor(way way.Way) float64 {
+	class, ok := way.Tags["highway"]
+	if !ok {
+		return 1
+	}
+
+	switch class {
+	case "motorway_link":
+		fallthrough
+	case "motorway":
+		return 1.5
+
+	case "trunk_link":
+		fallthrough
+	case "trunk":
+		return 1.4
+
+	case "primary_link":
+		fallthrough
+	case "primary":
+		return 1.2
+
+	case "secondary_link":
+		fallthrough
+	case "secondary":
+		return 1.2
+
+	case "tertiary_link":
+		fallthrough
+	case "tertiary":
+		return 1.1
+
+	case "residential":
+		fallthrough
+	default:
+		return 1
+	}
 }

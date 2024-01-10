@@ -2,8 +2,9 @@ package graphService
 
 import (
 	"fmt"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/crossing"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/node"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/way"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/crossingRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/weightRepository"
@@ -16,35 +17,43 @@ import (
 
 const (
 	nearNodesApproxDistance = 0.001 // approx. 1km
-	defaultVehicleType      = weightRepository.Pedestrian
+	defaultVehicleType      = weightRepository.Car
 )
 
 type GraphService interface {
-	GetEdges(id int64) map[int64]float64
-	GetHeuristic(end *node.Node) func(id int64) float64
+	GetEdges(end node.Node) func(id int64) map[int64]float64
+	GetHeuristic(end node.Node) func(id int64) float64
 	BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error)
 	GetNearestNode(lat float64, lon float64) (*node.Node, error)
 }
 
 type impl struct {
-	nodeRepository   nodeRepository.NodeRepository
-	wayRepository    wayRepository.WayRepository
-	weightRepository weightRepository.WeightRepository
-	logger           logging.Logger
+	nodeRepository     nodeRepository.NodeRepository
+	crossingRepository crossingRepository.CrossingRepository
+	wayRepository      wayRepository.WayRepository
+	weightRepository   weightRepository.WeightRepository
+	logger             logging.Logger
 
 	visitedNodes int
 }
 
-func New(nodeRepository nodeRepository.NodeRepository, wayRepository wayRepository.WayRepository, weightRepository weightRepository.WeightRepository, logger logging.Logger) GraphService {
+func New(nodeRepository nodeRepository.NodeRepository, crossingRepository crossingRepository.CrossingRepository, wayRepository wayRepository.WayRepository, weightRepository weightRepository.WeightRepository, logger logging.Logger) GraphService {
 	return &impl{
-		nodeRepository:   nodeRepository,
-		wayRepository:    wayRepository,
-		weightRepository: weightRepository,
-		logger:           logger,
+		nodeRepository:     nodeRepository,
+		crossingRepository: crossingRepository,
+		wayRepository:      wayRepository,
+		weightRepository:   weightRepository,
+		logger:             logger,
 	}
 }
 
-func (i *impl) GetEdges(id int64) map[int64]float64 {
+func (i *impl) GetEdges(end node.Node) func(id int64) map[int64]float64 {
+	return func(id int64) map[int64]float64 {
+		return i.getEdges(id, end)
+	}
+}
+
+func (i *impl) getEdges(id int64, end node.Node) map[int64]float64 {
 	ways, err := i.wayRepository.SelectWaysFromNode(id)
 	if err != nil {
 		i.logger.Error().Msgf("error while selecting ways from node: %s", err.Error())
@@ -52,28 +61,32 @@ func (i *impl) GetEdges(id int64) map[int64]float64 {
 	}
 
 	out := make(map[int64]float64)
-	var fromNode *node.Node
 	for _, w := range ways {
 		if !i.weightRepository.IsWayAllowed(*w, defaultVehicleType) {
 			continue
 		}
 
-		nodes, err := i.nodeRepository.SelectNodesFromWay(w.OsmID)
+		crossings, err := i.crossingRepository.SelectCrossingsFromWayID(w.OsmID)
 		if err != nil {
 			i.logger.Error().Msgf("error while selecting nodes from way: %s", err.Error())
 			continue
 		}
 
-		if fromNode == nil {
-			for _, n := range nodes {
-				if n.OsmID == id {
-					fromNode = n
-					break
-				}
+		var fromCrossing *crossing.Crossing
+		for _, n := range crossings {
+
+			if n.OsmID == id {
+				fromCrossing = n
+				break
 			}
 		}
 
-		weights := i.weightRepository.CalculateWeights(fromNode, w, nodes, defaultVehicleType)
+		if fromCrossing == nil {
+			i.logger.Error().Msgf("from crossing not found")
+			continue
+		}
+
+		weights := i.weightRepository.CalculateWeights(fromCrossing, w, crossings, end, defaultVehicleType)
 		for k, v := range weights {
 			if prevV, ok := out[k]; ok && prevV < v {
 				continue
@@ -85,13 +98,7 @@ func (i *impl) GetEdges(id int64) map[int64]float64 {
 	return out
 }
 
-func (i *impl) GetHeuristic(end *node.Node) func(id int64) float64 {
-	if end == nil {
-		return func(id int64) float64 {
-			return 0
-		}
-	}
-
+func (i *impl) GetHeuristic(end node.Node) func(id int64) float64 {
 	return func(nodeId int64) float64 {
 		node, err := i.nodeRepository.SelectNodeFromID(nodeId)
 		if err != nil {
@@ -102,7 +109,7 @@ func (i *impl) GetHeuristic(end *node.Node) func(id int64) float64 {
 		return geodistance.CalcDistanceInMeters(
 			geodistance.NewPoint(end.Lat, end.Lon),
 			geodistance.NewPoint(node.Lat, node.Lon),
-		) * i.weightRepository.MaximumWayFactor(defaultVehicleType)
+		) * (i.weightRepository.MaximumWayFactor(defaultVehicleType) * 2)
 	}
 }
 
@@ -125,21 +132,13 @@ func (i *impl) BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error) {
 			return nil, fmt.Errorf("error while selecting ways from two nodes: %s", err.Error())
 		}
 
-		var way *way.Way
-		weight := math.Inf(1)
-		for _, w := range ways {
-			weights := i.weightRepository.CalculateWeights(prevNode, w, []*node.Node{prevNode, n}, defaultVehicleType)
-			if weights[n.OsmID] < weight {
-				weight = weights[n.OsmID]
-				way = w
-			}
-		}
-
-		if way == nil {
+		if len(ways) == 0 {
 			return nil, fmt.Errorf("no way found between node %d and %d", prevNode.OsmID, n.OsmID)
 		}
 
-		pathNodes, err := i.nodeRepository.SelectNodesFromWay(way.OsmID)
+		way := ways[0]
+
+		pathNodes, err := i.nodeRepository.SelectNodesFromWayID(way.OsmID)
 		if err != nil {
 			return nil, fmt.Errorf("error while selecting nodes from way: %s", err.Error())
 		}
@@ -191,8 +190,7 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 	var skippedNodes []int64
 
 	for _, node := range nodes {
-		edges := i.GetEdges(node.OsmID)
-		if len(edges) == 0 {
+		if !i.hasEdges(node.OsmID) {
 			skippedNodes = append(skippedNodes, node.OsmID)
 			continue
 		}
@@ -212,4 +210,32 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 	i.logger.WithAttrs("skipped", skippedNodes).Debug().Msgf("skipped %d nodes without edges", len(skippedNodes))
 
 	return nearestNode, nil
+}
+
+func (i *impl) hasEdges(id int64) bool {
+	ways, err := i.wayRepository.SelectWaysFromNode(id)
+	if err != nil {
+		i.logger.Error().Msgf("error while selecting ways from node: %s", err.Error())
+		return false
+	}
+
+	for _, w := range ways {
+		if !i.weightRepository.IsWayAllowed(*w, defaultVehicleType) {
+			continue
+		}
+
+		crossings, err := i.crossingRepository.SelectCrossingsFromWayID(w.OsmID)
+		if err != nil {
+			i.logger.Error().Msgf("error while selecting nodes from way: %s", err.Error())
+			continue
+		}
+
+		for _, c := range crossings {
+			if c.IsCrossing {
+				return true
+			}
+		}
+	}
+
+	return false
 }

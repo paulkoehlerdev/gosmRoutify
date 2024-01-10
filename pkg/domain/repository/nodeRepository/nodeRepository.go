@@ -17,8 +17,8 @@ type NodeRepository interface {
 
 	SelectNodeFromID(id int64) (*node.Node, error)
 
-	SelectNodeIDsFromWay(wayID int64) ([]int64, error)
-	SelectNodesFromWay(wayID int64) ([]*node.Node, error)
+	SelectNodeIDsFromWayID(wayID int64) ([]int64, error)
+	SelectNodesFromWayID(wayID int64) ([]*node.Node, error)
 
 	SelectNearNodesApprox(lat float64, lon float64, radius float64) ([]*node.Node, error)
 }
@@ -191,7 +191,7 @@ func (i *impl) SelectNodeFromID(id int64) (*node.Node, error) {
 	return nodes[0], nil
 }
 
-func (i *impl) SelectNodeIDsFromWay(wayID int64) ([]int64, error) {
+func (i *impl) SelectNodeIDsFromWayID(wayID int64) ([]int64, error) {
 	rows, err := i.preparedStatements.selectNodeIDsFromWayID.Query(wayID)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying nodes from way: %s", err.Error())
@@ -233,9 +233,9 @@ func decodeNodes(rows *sql.Rows) ([]*node.Node, error) {
 	return nodes, nil
 }
 
-func (i *impl) SelectNodesFromWay(wayID int64) ([]*node.Node, error) {
+func (i *impl) SelectNodesFromWayID(wayID int64) ([]*node.Node, error) {
 	if i.preparedStatements.selectNodesFromWayID == nil {
-		return nil, fmt.Errorf("statements not prepared: you need to call Init() before you can call SelectNodeIDsFromWay()")
+		return nil, fmt.Errorf("statements not prepared: you need to call Init() before you can call SelectNodeIDsFromWayID()")
 	}
 
 	rows, err := i.preparedStatements.selectNodesFromWayID.Query(wayID)

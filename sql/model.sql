@@ -42,3 +42,9 @@ CREATE TABLE IF NOT EXISTS relation (
     osm_id INTEGER PRIMARY KEY,
     tags BLOB -- JSON
 ) STRICT;
+
+CREATE VIRTUAL TABLE IF NOT EXISTS addresses USING FS5(
+    lat REAL,
+    lon REAL,
+    address TEXT,
+);
