@@ -22,11 +22,16 @@ SELECT osm_id, lat, lon, tags FROM node WHERE osm_id = ?;
 `
 
 	selectNodeIDsFromWayID = `
-SELECT node_id FROM wayToNodeRelation WHERE way_id = ?;
+SELECT node_id FROM wayToNodeRelation
+	WHERE way_id = ? 
+	ORDER BY position ASC;
 `
 
 	selectNodesFromWayID = `
-SELECT osm_id, lat, lon, tags FROM node JOIN wayToNodeRelation AS relation ON node.osm_id = relation.node_id WHERE relation.way_id = ?;
+SELECT osm_id, lat, lon, tags FROM node 
+	JOIN wayToNodeRelation AS relation ON node.osm_id = relation.node_id 
+	WHERE relation.way_id = ? 
+	ORDER BY relation.position ASC;
 `
 
 	selectNearNodes = `

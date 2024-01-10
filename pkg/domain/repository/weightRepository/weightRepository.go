@@ -7,19 +7,21 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geodistance"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"math"
-	"strconv"
-	"strings"
 )
 
 const (
 	maximumSpeedBias = 180.0
-	minimumSpeedBias = 5.0
+	walkingSpeedBias = 5
+	minimumSpeedBias = 2.5
 
-	walkinSpeedBias = 15.0
+	laneFactor      = 0.5849 // 2^0.5849 ~ 1.5
+	maximumLaneBias = 3.0
 )
 
 type WeightRepository interface {
-	CalculateWeights(from *node.Node, over *way.Way, to []*node.Node) map[int64]float64
+	IsWayAllowed(way way.Way, vehicleType VehicleType) bool
+	MaximumWayFactor(vehicleType VehicleType) float64
+	CalculateWeights(from *node.Node, over *way.Way, to []*node.Node, vehicleType VehicleType) map[int64]float64
 }
 
 type impl struct {
@@ -32,7 +34,15 @@ func New(logger logging.Logger) WeightRepository {
 	}
 }
 
-func (i *impl) CalculateWeights(from *node.Node, over *way.Way, to []*node.Node) map[int64]float64 {
+func (i *impl) IsWayAllowed(way way.Way, vehicleType VehicleType) bool {
+	return vehicleType.isWayTypeAllowed(way)
+}
+
+func (i *impl) MaximumWayFactor(vehicleType VehicleType) float64 {
+	return vehicleType.maxmimumWayFactor()
+}
+
+func (i *impl) CalculateWeights(from *node.Node, over *way.Way, to []*node.Node, vehicleType VehicleType) map[int64]float64 {
 	if from == nil {
 		i.logger.Error().Msg("from node is nil")
 		return make(map[int64]float64)
@@ -43,44 +53,37 @@ func (i *impl) CalculateWeights(from *node.Node, over *way.Way, to []*node.Node)
 		return make(map[int64]float64)
 	}
 
+	if oneway, ok := over.Tags["oneway"]; ok && !(oneway == "no" || oneway == "false" || oneway == "0") {
+		fromIndex := -1
+		for i, n := range to {
+			if n.OsmID == from.OsmID {
+				fromIndex = i
+				break
+			}
+		}
+
+		if fromIndex == -1 {
+			i.logger.Error().Msg("from node not found in to nodes")
+			return make(map[int64]float64)
+		}
+
+		if oneway == "yes" || oneway == "true" || oneway == "1" {
+			to = to[fromIndex:]
+		}
+
+		if oneway == "-1" || oneway == "reverse" {
+			to = to[:fromIndex+1]
+		}
+	}
+
 	distances := i.calculateDistances(*from, to)
 	out := make(map[int64]float64, len(to))
 
-	wayFactor := 1.0
-
-	if v, ok := over.Tags["maxspeed"]; ok && v != "" {
-		wayFactor /= calcMaxSpeed(over.Tags["maxspeed"]) * 0.9
-	} else if v, ok := over.Tags["highway"]; ok && v != "" {
-		wayFactor /= calcMaxSpeedFromRoadType(over.Tags["highway"])
-	}
-
-	for i, node := range to {
-		out[node.OsmID] = distances[i] * wayFactor
+	for iter, node := range to {
+		out[node.OsmID] = distances[iter] * vehicleType.calcWayFactor(*over)
 	}
 
 	return out
-}
-
-func calcMaxSpeed(maxSpeed string) float64 {
-	maxSpeed = strings.SplitN(maxSpeed, " ", 2)[0]
-
-	if speed, err := strconv.ParseFloat(maxSpeed, 64); err == nil {
-		return speed
-	}
-
-	if maxSpeed == "walk" {
-		return walkinSpeedBias
-	}
-
-	if maxSpeed == "none" {
-		return maximumSpeedBias
-	}
-
-	return minimumSpeedBias
-}
-
-func calcMaxSpeedFromRoadType(highwayClass string) float64 {
-	return fClassToSteetType(highwayClass).DefaultMaxSpeed()
 }
 
 func (i *impl) calculateDistances(from node.Node, to []*node.Node) []float64 {

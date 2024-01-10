@@ -60,4 +60,9 @@ func (i *firstPassProcessor) OnFinish() {
 	if err != nil {
 		i.logger.Error().Msgf("Error while committing bulk insert: %s", err.Error())
 	}
+
+	err = i.wayService.UpdateCrossings()
+	if err != nil {
+		i.logger.Error().Msgf("Error while updating crossings: %s", err.Error())
+	}
 }

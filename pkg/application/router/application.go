@@ -14,6 +14,10 @@ type Application interface {
 	FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error)
 }
 
+const (
+	maxVisitedNodes = 500000
+)
+
 type impl struct {
 	logger       logging.Logger
 	graphService graphService.GraphService
@@ -43,7 +47,7 @@ func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Poin
 
 	i.logger.Debug().Msgf("calculated nearest node in %s", time.Since(startTime).String())
 
-	path, length, err := astar.AStar[int64, float64](startNode.OsmID, endNode.OsmID, i.graphService.GetEdges, i.graphService.GetHeuristic(endNode))
+	path, length, err := astar.AStar[int64, float64](startNode.OsmID, endNode.OsmID, i.graphService.GetEdges, i.graphService.GetHeuristic(endNode), maxVisitedNodes)
 	if err != nil {
 		return nil, fmt.Errorf("error while routing: %s", err.Error())
 	}

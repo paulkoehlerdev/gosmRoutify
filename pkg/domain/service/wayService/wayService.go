@@ -12,6 +12,8 @@ type WayService interface {
 	CommitBulkInsert() error
 
 	SelectWayIDsFromNode(nodeID int64) ([]int64, error)
+
+	UpdateCrossings() error
 }
 
 const bulkInsertBufferSize = 2 << 9
@@ -50,6 +52,10 @@ func (i *impl) CommitBulkInsert() error {
 	}
 	i.bulkInsertBuffer = make([]way.Way, 0, bulkInsertBufferSize)
 	return nil
+}
+
+func (i *impl) UpdateCrossings() error {
+	return i.wayRepository.UpdateCrossings()
 }
 
 func (i *impl) SelectWayIDsFromNode(nodeID int64) ([]int64, error) {

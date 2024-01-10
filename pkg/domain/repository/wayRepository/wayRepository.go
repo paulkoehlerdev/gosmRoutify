@@ -20,6 +20,8 @@ type WayRepository interface {
 	SelectWaysFromNode(nodeID int64) ([]*way.Way, error)
 
 	SelectWaysFromTwoNodeIDs(nodeID1 int64, nodeID2 int64) ([]*way.Way, error)
+
+	UpdateCrossings() error
 }
 
 type impl struct {
@@ -37,6 +39,8 @@ type preparedStatements struct {
 	selectWaysFromNodeID   *sql.Stmt
 
 	selectWaysFromTwoNodeIDs *sql.Stmt
+
+	updateCrossings *sql.Stmt
 }
 
 func New(db database.Database) WayRepository {
@@ -85,6 +89,11 @@ func (i *impl) prepareStatements() error {
 		return fmt.Errorf("error while preparing select ways from two nodes statement: %s", err.Error())
 	}
 
+	updateCrossings, err := i.db.Prepare(updateCrossings)
+	if err != nil {
+		return fmt.Errorf("error while preparing update crossings statement: %s", err.Error())
+	}
+
 	i.preparedStatements.insertWay = insertWay
 	i.preparedStatements.insertWayToNodeRelation = insertWayToNodeRelation
 
@@ -92,6 +101,8 @@ func (i *impl) prepareStatements() error {
 	i.preparedStatements.selectWaysFromNodeID = selectWaysFromNodeID
 
 	i.preparedStatements.selectWaysFromTwoNodeIDs = selectWaysFromTwoNodeIDs
+
+	i.preparedStatements.updateCrossings = updateCrossings
 
 	return nil
 }
@@ -152,8 +163,8 @@ func (i *impl) InsertWays(ways []way.Way) error {
 			return fmt.Errorf("error while inserting way: %s", err.Error())
 		}
 
-		for _, nodeId := range way.Nodes {
-			_, err = insertWayToNodeRelation.Exec(nodeId, way.OsmID)
+		for position, nodeId := range way.Nodes {
+			_, err = insertWayToNodeRelation.Exec(nodeId, way.OsmID, position)
 			if err != nil {
 				return fmt.Errorf("error while inserting way to node relation: %s", err.Error())
 			}
@@ -238,4 +249,13 @@ func decodeWays(rows *sql.Rows) ([]*way.Way, error) {
 	}
 
 	return ways, nil
+}
+
+func (i *impl) UpdateCrossings() error {
+	_, err := i.preparedStatements.updateCrossings.Exec()
+	if err != nil {
+		return fmt.Errorf("error while updating crossings: %s", err.Error())
+	}
+
+	return nil
 }

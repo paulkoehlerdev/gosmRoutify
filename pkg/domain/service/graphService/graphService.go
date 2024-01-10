@@ -1,7 +1,6 @@
 package graphService
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/node"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/way"
@@ -15,7 +14,10 @@ import (
 	"math"
 )
 
-const nearNodesApproxDistance = 0.001 // approx. 1km
+const (
+	nearNodesApproxDistance = 0.001 // approx. 1km
+	defaultVehicleType      = weightRepository.Pedestrian
+)
 
 type GraphService interface {
 	GetEdges(id int64) map[int64]float64
@@ -29,6 +31,8 @@ type impl struct {
 	wayRepository    wayRepository.WayRepository
 	weightRepository weightRepository.WeightRepository
 	logger           logging.Logger
+
+	visitedNodes int
 }
 
 func New(nodeRepository nodeRepository.NodeRepository, wayRepository wayRepository.WayRepository, weightRepository weightRepository.WeightRepository, logger logging.Logger) GraphService {
@@ -41,16 +45,19 @@ func New(nodeRepository nodeRepository.NodeRepository, wayRepository wayReposito
 }
 
 func (i *impl) GetEdges(id int64) map[int64]float64 {
-	way, err := i.wayRepository.SelectWaysFromNode(id)
+	ways, err := i.wayRepository.SelectWaysFromNode(id)
 	if err != nil {
 		i.logger.Error().Msgf("error while selecting ways from node: %s", err.Error())
 		return make(map[int64]float64)
 	}
 
 	out := make(map[int64]float64)
-
 	var fromNode *node.Node
-	for _, w := range way {
+	for _, w := range ways {
+		if !i.weightRepository.IsWayAllowed(*w, defaultVehicleType) {
+			continue
+		}
+
 		nodes, err := i.nodeRepository.SelectNodesFromWay(w.OsmID)
 		if err != nil {
 			i.logger.Error().Msgf("error while selecting nodes from way: %s", err.Error())
@@ -66,7 +73,7 @@ func (i *impl) GetEdges(id int64) map[int64]float64 {
 			}
 		}
 
-		weights := i.weightRepository.CalculateWeights(fromNode, w, nodes)
+		weights := i.weightRepository.CalculateWeights(fromNode, w, nodes, defaultVehicleType)
 		for k, v := range weights {
 			if prevV, ok := out[k]; ok && prevV < v {
 				continue
@@ -92,7 +99,10 @@ func (i *impl) GetHeuristic(end *node.Node) func(id int64) float64 {
 			return 0
 		}
 
-		return geodistance.CalcDistanceInMeters(geodistance.NewPoint(end.Lat, end.Lon), geodistance.NewPoint(node.Lat, node.Lon))
+		return geodistance.CalcDistanceInMeters(
+			geodistance.NewPoint(end.Lat, end.Lon),
+			geodistance.NewPoint(node.Lat, node.Lon),
+		) * i.weightRepository.MaximumWayFactor(defaultVehicleType)
 	}
 }
 
@@ -118,7 +128,7 @@ func (i *impl) BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error) {
 		var way *way.Way
 		weight := math.Inf(1)
 		for _, w := range ways {
-			weights := i.weightRepository.CalculateWeights(prevNode, w, []*node.Node{prevNode, n})
+			weights := i.weightRepository.CalculateWeights(prevNode, w, []*node.Node{prevNode, n}, defaultVehicleType)
 			if weights[n.OsmID] < weight {
 				weight = weights[n.OsmID]
 				way = w
@@ -172,28 +182,21 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 		return nil, fmt.Errorf("error while selecting near nodes: %s", err.Error())
 	}
 
-	geojsonObj := geojson.NewEmptyGeoJson()
-	var multiLineString geojson.MultiLineString
-	for _, node := range nodes {
-		var lineString geojson.LineString
-		lineString = append(lineString, geojson.NewPoint(lon, lat))
-		lineString = append(lineString, geojson.NewPoint(node.Lon, node.Lat))
-		multiLineString = append(multiLineString, lineString)
-	}
-	geojsonObj.AddFeature(geojson.NewFeature(multiLineString.ToGeometry()))
-
-	geoJsonBytes, err := json.Marshal(geojsonObj)
-	if err != nil {
-		i.logger.Error().Msgf("error while marshalling geojson: %s", err.Error())
-	}
-
-	i.logger.Debug().WithAttrs("geojson", string(geoJsonBytes)).Msgf("found %d near nodes", len(nodes))
+	i.logger.Debug().Msgf("found %d near nodes", len(nodes))
 
 	searchPoint := geodistance.NewPoint(lat, lon)
 	var nearestNode *node.Node
 	var nearestNodeDistance float64
 
+	var skippedNodes []int64
+
 	for _, node := range nodes {
+		edges := i.GetEdges(node.OsmID)
+		if len(edges) == 0 {
+			skippedNodes = append(skippedNodes, node.OsmID)
+			continue
+		}
+
 		nodePoint := geodistance.NewPoint(node.Lat, node.Lon)
 		distance := geodistance.CalcDistanceInMeters(searchPoint, nodePoint)
 		if nearestNode == nil || distance < nearestNodeDistance {
@@ -205,6 +208,8 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 	if nearestNode == nil {
 		return nil, fmt.Errorf("no near node found (in %f meters)", math.Tan(nearNodesApproxDistance*math.Pi/180)*geodistance.EarthRadius)
 	}
+
+	i.logger.WithAttrs("skipped", skippedNodes).Debug().Msgf("skipped %d nodes without edges", len(skippedNodes))
 
 	return nearestNode, nil
 }

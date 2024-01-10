@@ -4,7 +4,9 @@ const (
 	dataModel = `
 CREATE TABLE IF NOT EXISTS wayToNodeRelation (
     node_id INTEGER NOT NULL,
-    way_id INTEGER NOT NULL
+    way_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    is_crossing INTEGER NOT NULL DEFAULT 0
 ) STRICT;
 
 
@@ -27,7 +29,16 @@ INSERT INTO way (osm_id, tags) VALUES (?, ?)
 `
 
 	insertWayToNodeRelation = `
-INSERT INTO wayToNodeRelation (node_id, way_id) VALUES (?, ?);
+INSERT INTO wayToNodeRelation (node_id, way_id, position) VALUES (?, ?, ?);
+`
+
+	updateCrossings = `
+BEGIN TRANSACTION;
+UPDATE wayToNodeRelation SET is_crossing = false WHERE 1;
+UPDATE wayToNodeRelation SET is_crossing = true WHERE (
+      SELECT COUNT(*) FROM wayToNodeRelation AS rel WHERE rel.node_id = wayToNodeRelation.node_id
+) >= 2;
+COMMIT TRANSACTION;
 `
 
 	selectWayIDsFromNodeID = `

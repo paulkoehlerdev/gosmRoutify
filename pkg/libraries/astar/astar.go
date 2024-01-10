@@ -11,7 +11,7 @@ type number interface {
 	constraints.Float | constraints.Integer
 }
 
-func AStar[K comparable, N number](start K, end K, connections func(element K) map[K]N, heuristic func(K) N) ([]K, N, error) {
+func AStar[K comparable, N number](start K, end K, connections func(element K) map[K]N, heuristic func(K) N, stopAfter int) ([]K, N, error) {
 	open := priorityQueue.NewPriorityQueue[K, N]()
 	open.Push(start, 0)
 
@@ -23,6 +23,11 @@ func AStar[K comparable, N number](start K, end K, connections func(element K) m
 	count := 0
 	for open.Len() > 0 {
 		count++
+
+		if count > stopAfter {
+			return nil, 0, fmt.Errorf("error: no route found, after %d (max) iterations", count)
+		}
+
 		current := open.Pop()
 
 		if current == end {
