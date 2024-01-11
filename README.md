@@ -24,6 +24,5 @@ Special thanks to the owners and maintainers of following libraries, which I eit
 
 - [`graphhopper` https://github.com/graphhopper/graphhopper](https://github.com/graphhopper/graphhopper)
 - [`valhalla` https://github.com/valhalla/valhalla](https://github.com/valhalla/valhalla)
-- [`graphhopper` https://github.com/graphhopper/graphhopper](https://github.com/graphhopper/graphhopper)
 
 I also want to thank [Geofabrik GmbH](https://www.geofabrik.de/) for providing the OSM data extracts for testing and experiencing this project.

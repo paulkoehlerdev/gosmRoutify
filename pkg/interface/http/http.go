@@ -19,6 +19,9 @@ func NewHttpServer(
 	routeEndpoint := endpoint.NewRouteEndpointHandler(application, logger.WithAttrs("endpoint", "route"))
 	serveMux.Handle("/api/route", routeEndpoint)
 
+	addressEndpoint := endpoint.NewAddressEndpointHandler(application, logger.WithAttrs("endpoint", "address"))
+	serveMux.Handle("/api/address", addressEndpoint)
+
 	frontendEndpoint := endpoint.NewFrontendEndpointHandler(logger.WithAttrs("endpoint", "frontend"), "")
 	serveMux.Handle("/", frontendEndpoint)
 

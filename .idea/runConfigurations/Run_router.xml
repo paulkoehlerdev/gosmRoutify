@@ -2,6 +2,7 @@
   <configuration default="false" name="Run router" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="gosmRoutify" />
     <working_directory value="$PROJECT_DIR$" />
+    <useCustomBuildTags value="true" />
     <parameters value="-config config.json" />
     <kind value="PACKAGE" />
     <package value="github.com/paulkoehlerdev/gosmRoutify/cmd/router" />
