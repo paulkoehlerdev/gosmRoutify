@@ -2,8 +2,9 @@ package router
 
 import (
 	"fmt"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/address"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/addressService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/astar"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
@@ -12,6 +13,7 @@ import (
 
 type Application interface {
 	FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error)
+	FindAddresses(query string) ([]*address.Address, error)
 }
 
 const (
@@ -19,16 +21,16 @@ const (
 )
 
 type impl struct {
-	logger       logging.Logger
-	graphService graphService.GraphService
-	nodeService  nodeService.NodeService
+	logger         logging.Logger
+	graphService   graphService.GraphService
+	addressService addressService.AddressService
 }
 
-func New(graphService graphService.GraphService, nodeService nodeService.NodeService, logger logging.Logger) Application {
+func New(graphService graphService.GraphService, addressService addressService.AddressService, logger logging.Logger) Application {
 	return &impl{
-		logger:       logger,
-		graphService: graphService,
-		nodeService:  nodeService,
+		logger:         logger,
+		graphService:   graphService,
+		addressService: addressService,
 	}
 }
 
@@ -77,4 +79,8 @@ func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Poin
 	)
 
 	return nodePoints, nil
+}
+
+func (i *impl) FindAddresses(query string) ([]*address.Address, error) {
+	return i.addressService.GetSearchResultsFromAddress(query)
 }

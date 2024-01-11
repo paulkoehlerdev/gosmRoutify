@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/addressRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/crossingRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/weightRepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/addressService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/interface/http"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/database"
 )
@@ -48,7 +49,7 @@ func main() {
 		return
 	}
 
-	nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
+	// nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
 
 	wayRepo := wayRepository.New(db)
 	err = wayRepo.Init()
@@ -70,7 +71,16 @@ func main() {
 
 	graphSvc := graphService.New(nodeRepo, crossingRepo, wayRepo, weightRepo, logger.WithAttrs("service", "graph"))
 
-	application := router.New(graphSvc, nodeSvc, logger.WithAttrs("application", "loader"))
+	addrRepo := addressRepository.New(db)
+	err = addrRepo.Init()
+	if err != nil {
+		logger.Error().Msgf("error while initializing address repository: %s", err.Error())
+		return
+	}
+
+	addrSvc := addressService.New(addrRepo, logger.WithAttrs("service", "address"))
+
+	application := router.New(graphSvc, addrSvc, logger.WithAttrs("application", "loader"))
 
 	server, err := http.NewHttpServer(logger.WithAttrs("service", "interfaceHTTP"), application, config.ServerConfig)
 	if err != nil {

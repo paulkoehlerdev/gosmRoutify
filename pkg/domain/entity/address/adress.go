@@ -1,8 +1,9 @@
-package adress
+package address
 
-type Adress struct {
-	Lat         float64
-	Lon         float64
+type Address struct {
+	Lat float64
+	Lon float64
+
 	Housenumber string
 	Street      string
 	City        string
@@ -13,4 +14,6 @@ type Adress struct {
 	State    string
 	Province string
 	Floor    string
+
+	Name string
 }

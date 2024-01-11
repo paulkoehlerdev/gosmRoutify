@@ -5,9 +5,11 @@ package main
 import (
 	"flag"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/loader"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/addressRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/osmdatarepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/addressService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/osmdataservice"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/wayService"
@@ -20,6 +22,10 @@ import (
 func main() {
 	importFile := flag.String("import", "", "import file")
 	databaseFile := flag.String("database", "", "database file")
+
+	importData := flag.Bool("data", false, "import data")
+	importAddress := flag.Bool("address", false, "import address")
+
 	flag.Parse()
 
 	if importFile == nil || databaseFile == nil {
@@ -27,6 +33,22 @@ func main() {
 	}
 
 	logger := logging.New(logging.LevelDebug, os.Stdout)
+
+	if importData == nil {
+		importData = new(bool)
+		*importData = false
+	}
+
+	if importAddress == nil {
+		importAddress = new(bool)
+		*importAddress = false
+	}
+
+	if *importData == false && *importAddress == false {
+		logger.Error().Msgf("no import type provided")
+		return
+	}
+
 	db, err := database.New(*databaseFile)
 	if err != nil {
 		logger.Error().Msgf("error while creating database: %s", err.Error())
@@ -59,9 +81,18 @@ func main() {
 
 	nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
 
-	application := loader.New(osmdataSvc, nodeSvc, waySvc, logger.WithAttrs("application", "loader"))
+	addrRepo := addressRepository.New(db)
+	err = addrRepo.Init()
+	if err != nil {
+		logger.Error().Msgf("error while initializing address repository: %s", err.Error())
+		return
+	}
 
-	err = application.Load()
+	addrSvc := addressService.New(addrRepo, logger.WithAttrs("service", "address"))
+
+	application := loader.New(osmdataSvc, nodeSvc, waySvc, addrSvc, logger.WithAttrs("application", "loader"))
+
+	err = application.Load(*importData, *importAddress)
 	if err != nil {
 		logger.Error().Msgf("error while loading data: %s", err.Error())
 		return
