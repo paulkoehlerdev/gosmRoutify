@@ -9,9 +9,9 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/weightRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/arrayutil"
-	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geodistance"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/sphericmath"
 	"math"
 )
 
@@ -21,7 +21,7 @@ const (
 )
 
 type GraphService interface {
-	GetEdges(end node.Node) func(id int64) map[int64]float64
+	GetEdges(end node.Node) func(prevId, id int64) map[int64]float64
 	GetHeuristic(end node.Node) func(id int64) float64
 	BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error)
 	GetNearestNode(lat float64, lon float64) (*node.Node, error)
@@ -47,17 +47,22 @@ func New(nodeRepository nodeRepository.NodeRepository, crossingRepository crossi
 	}
 }
 
-func (i *impl) GetEdges(end node.Node) func(id int64) map[int64]float64 {
-	return func(id int64) map[int64]float64 {
-		return i.getEdges(id, end)
+func (i *impl) GetEdges(end node.Node) func(prevId, id int64) map[int64]float64 {
+	return func(prevId int64, id int64) map[int64]float64 {
+		return i.getEdges(prevId, id, end)
 	}
 }
 
-func (i *impl) getEdges(id int64, end node.Node) map[int64]float64 {
+func (i *impl) getEdges(prevId, id int64, end node.Node) map[int64]float64 {
 	ways, err := i.wayRepository.SelectWaysFromNode(id)
 	if err != nil {
 		i.logger.Error().Msgf("error while selecting ways from node: %s", err.Error())
 		return make(map[int64]float64)
+	}
+
+	prevNode, err := i.nodeRepository.SelectNodeFromID(prevId)
+	if err != nil {
+		i.logger.Error().Msgf("error while selecting node from id: %s", err.Error())
 	}
 
 	out := make(map[int64]float64)
@@ -86,7 +91,7 @@ func (i *impl) getEdges(id int64, end node.Node) map[int64]float64 {
 			continue
 		}
 
-		weights := i.weightRepository.CalculateWeights(fromCrossing, w, crossings, end, defaultVehicleType)
+		weights := i.weightRepository.CalculateWeights(prevNode, fromCrossing, w, crossings, end, defaultVehicleType)
 		for k, v := range weights {
 			if prevV, ok := out[k]; ok && prevV < v {
 				continue
@@ -106,9 +111,9 @@ func (i *impl) GetHeuristic(end node.Node) func(id int64) float64 {
 			return 0
 		}
 
-		return geodistance.CalcDistanceInMeters(
-			geodistance.NewPoint(end.Lat, end.Lon),
-			geodistance.NewPoint(node.Lat, node.Lon),
+		return sphericmath.CalcDistanceInMeters(
+			sphericmath.NewPoint(end.Lat, end.Lon),
+			sphericmath.NewPoint(node.Lat, node.Lon),
 		) * (i.weightRepository.MaximumWayFactor(defaultVehicleType) * 2)
 	}
 }
@@ -183,7 +188,7 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 
 	i.logger.Debug().Msgf("found %d near nodes", len(nodes))
 
-	searchPoint := geodistance.NewPoint(lat, lon)
+	searchPoint := sphericmath.NewPoint(lat, lon)
 	var nearestNode *node.Node
 	var nearestNodeDistance float64
 
@@ -195,8 +200,8 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 			continue
 		}
 
-		nodePoint := geodistance.NewPoint(node.Lat, node.Lon)
-		distance := geodistance.CalcDistanceInMeters(searchPoint, nodePoint)
+		nodePoint := sphericmath.NewPoint(node.Lat, node.Lon)
+		distance := sphericmath.CalcDistanceInMeters(searchPoint, nodePoint)
 		if nearestNode == nil || distance < nearestNodeDistance {
 			nearestNode = node
 			nearestNodeDistance = distance
@@ -204,7 +209,7 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 	}
 
 	if nearestNode == nil {
-		return nil, fmt.Errorf("no near node found (in %f meters)", math.Tan(nearNodesApproxDistance*math.Pi/180)*geodistance.EarthRadius)
+		return nil, fmt.Errorf("no near node found (in %f meters)", math.Tan(nearNodesApproxDistance*math.Pi/180)*sphericmath.EarthRadius)
 	}
 
 	i.logger.WithAttrs("skipped", skippedNodes).Debug().Msgf("skipped %d nodes without edges", len(skippedNodes))

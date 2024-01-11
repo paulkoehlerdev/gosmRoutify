@@ -11,7 +11,7 @@ type number interface {
 	constraints.Float | constraints.Integer
 }
 
-func AStar[K comparable, N number](start K, end K, connections func(element K) map[K]N, heuristic func(K) N, stopAfter int) ([]K, N, error) {
+func AStar[K comparable, N number](start K, end K, connections func(previousElement, element K) map[K]N, heuristic func(K) N, stopAfter int) ([]K, N, error) {
 	open := priorityQueue.NewPriorityQueue[K, N]()
 	open.Push(start, 0)
 
@@ -34,7 +34,7 @@ func AStar[K comparable, N number](start K, end K, connections func(element K) m
 			return generatePath(parent, end), gScore[current], nil
 		}
 
-		neighbors := connections(current)
+		neighbors := connections(parent[current], current)
 		for neighbor, weight := range neighbors {
 			tentativeScore := gScore[current] + weight
 			if score, ok := gScore[neighbor]; !ok || tentativeScore < score {

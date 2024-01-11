@@ -188,6 +188,10 @@ func (i *impl) SelectNodeFromID(id int64) (*node.Node, error) {
 		return nil, fmt.Errorf("error while decoding nodes: %s", err.Error())
 	}
 
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("no node found")
+	}
+
 	return nodes[0], nil
 }
 
