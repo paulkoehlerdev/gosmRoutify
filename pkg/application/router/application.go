@@ -56,14 +56,15 @@ func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Poin
 		return nil, fmt.Errorf("error while routing: %s", err.Error())
 	}
 
-	i.logger.Debug().Msgf("calculated route in %s", time.Since(startTime).String())
-	i.logger.Debug().Msgf("route length (time): %s", time.Duration(length)*time.Second)
-	i.logger.Debug().WithAttrs("elements", path).Msgf("route length (elements): %v", len(path))
-
-	nodePoints, err := i.graphService.BuildGeojsonLineFromPath(path)
+	nodePoints, lengthInMeters, err := i.graphService.CalculatePathInformation(path)
 	if err != nil {
 		return nil, fmt.Errorf("error while building geojson line: %s", err.Error())
 	}
+
+	i.logger.Debug().Msgf("calculated route in %s", time.Since(startTime).String())
+	i.logger.Debug().Msgf("route length (time): %s", time.Duration(length)*time.Second)
+	i.logger.Debug().Msgf("route length (distance): %.3fkm", lengthInMeters/1000)
+	i.logger.Debug().WithAttrs("elements", path).Msgf("route length (elements): %v", len(path))
 
 	nodePoints = append(
 		[]geojson.Point{start},

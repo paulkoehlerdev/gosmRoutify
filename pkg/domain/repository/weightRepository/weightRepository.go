@@ -22,6 +22,8 @@ type WeightRepository interface {
 	IsWayAllowed(way way.Way, vehicleType VehicleType) bool
 	MaximumWayFactor(vehicleType VehicleType) float64
 	CalculateWeights(prevNode *node.Node, from *crossing.Crossing, over *way.Way, to []*crossing.Crossing, end node.Node, vehicleType VehicleType) map[int64]float64
+	CalculateDistances(from *node.Node, over *way.Way, pathNodes []*crossing.Crossing, end *node.Node) float64
+	CutPathNodes(from *crossing.Crossing, over *way.Way, pathNodes []*crossing.Crossing) []*crossing.Crossing
 }
 
 type impl struct {
@@ -53,15 +55,9 @@ func (i *impl) CalculateWeights(prevNode *node.Node, from *crossing.Crossing, ov
 		return make(map[int64]float64)
 	}
 
-	to = i.cutOneway(*from, *over, to)
+	to = i.CutPathNodes(from, over, to)
 	if to == nil {
-		i.logger.Error().Msg("to nodes are nil after cutting oneway")
-		return make(map[int64]float64)
-	}
-
-	to = i.cutCrossing(*from, to)
-	if to == nil {
-		i.logger.Error().Msg("to nodes are nil after cutting crossing")
+		i.logger.Error().Msg("to nodes are nil after cutting")
 		return make(map[int64]float64)
 	}
 
@@ -75,6 +71,27 @@ func (i *impl) CalculateWeights(prevNode *node.Node, from *crossing.Crossing, ov
 	}
 
 	return out
+}
+
+func (i *impl) CutPathNodes(from *crossing.Crossing, over *way.Way, pathNodes []*crossing.Crossing) []*crossing.Crossing {
+	if from == nil || over == nil || pathNodes == nil {
+		i.logger.Error().Msg("from, over or pathNodes are nil")
+		return nil
+	}
+
+	pathNodes = i.cutOneway(*from, *over, pathNodes)
+	if pathNodes == nil {
+		i.logger.Error().Msg("to nodes are nil after cutting oneway")
+		return nil
+	}
+
+	pathNodes = i.cutCrossing(*from, pathNodes)
+	if pathNodes == nil {
+		i.logger.Error().Msg("to nodes are nil after cutting crossing")
+		return nil
+	}
+
+	return pathNodes
 }
 
 func (i *impl) cutOneway(from crossing.Crossing, over way.Way, to []*crossing.Crossing) []*crossing.Crossing {
@@ -138,6 +155,39 @@ func (i *impl) cutCrossing(from crossing.Crossing, to []*crossing.Crossing) []*c
 	}
 
 	return to[cutFrom : cutTo+1]
+}
+
+func (i *impl) CalculateDistances(from *node.Node, over *way.Way, pathNodes []*crossing.Crossing, end *node.Node) float64 {
+	if from == nil {
+		i.logger.Error().Msg("from node is nil")
+		return math.NaN()
+	}
+
+	if end == nil {
+		i.logger.Error().Msg("end node is nil")
+		return math.NaN()
+	}
+
+	if over == nil {
+		i.logger.Error().Msg("over way is nil")
+		return math.NaN()
+	}
+
+	pathNodes = i.CutPathNodes(&crossing.Crossing{Node: *from}, over, pathNodes)
+	if pathNodes == nil {
+		i.logger.Error().Msg("to nodes are nil after cutting")
+		return math.NaN()
+	}
+
+	distances := i.calculateDistances(crossing.Crossing{Node: *from}, pathNodes, *end)
+
+	for n, dist := range distances {
+		if n.OsmID == end.OsmID {
+			return dist
+		}
+	}
+
+	return math.NaN()
 }
 
 func (i *impl) calculateDistances(from crossing.Crossing, to []*crossing.Crossing, end node.Node) map[*crossing.Crossing]float64 {

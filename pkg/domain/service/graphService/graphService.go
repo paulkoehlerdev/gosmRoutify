@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/crossing"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/node"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/way"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/crossingRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/nodeRepository"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
@@ -23,7 +24,7 @@ const (
 type GraphService interface {
 	GetEdges(end node.Node) func(prevId, id int64) map[int64]float64
 	GetHeuristic(end node.Node) func(id int64) float64
-	BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error)
+	CalculatePathInformation(path []int64) (way []geojson.Point, lengthInMeters float64, err error)
 	GetNearestNode(lat float64, lon float64) (*node.Node, error)
 }
 
@@ -118,10 +119,10 @@ func (i *impl) GetHeuristic(end node.Node) func(id int64) float64 {
 	}
 }
 
-func (i *impl) BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error) {
+func (i *impl) CalculatePathInformation(path []int64) (outPath []geojson.Point, lengthInMeters float64, err error) {
 	prevNode, err := i.nodeRepository.SelectNodeFromID(path[0])
 	if err != nil {
-		return nil, fmt.Errorf("error while selecting node from id: %s", err.Error())
+		return nil, 0.0, fmt.Errorf("error while selecting node from id: %s", err.Error())
 	}
 
 	var points []geojson.Point
@@ -129,24 +130,43 @@ func (i *impl) BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error) {
 	for _, nodeId := range path[1:] {
 		n, err := i.nodeRepository.SelectNodeFromID(nodeId)
 		if err != nil {
-			return nil, fmt.Errorf("error while selecting node from id: %s", err.Error())
+			return nil, 0.0, fmt.Errorf("error while selecting node from id: %s", err.Error())
 		}
 
 		ways, err := i.wayRepository.SelectWaysFromTwoNodeIDs(prevNode.OsmID, n.OsmID)
 		if err != nil {
-			return nil, fmt.Errorf("error while selecting ways from two nodes: %s", err.Error())
+			return nil, 0.0, fmt.Errorf("error while selecting ways from two nodes: %s", err.Error())
 		}
 
 		if len(ways) == 0 {
-			return nil, fmt.Errorf("no way found between node %d and %d", prevNode.OsmID, n.OsmID)
+			return nil, 0.0, fmt.Errorf("no way found between node %d and %d", prevNode.OsmID, n.OsmID)
 		}
 
-		way := ways[0]
+		var way *way.Way
+		var pathNodes []*crossing.Crossing
+		shortestLength := math.Inf(1)
 
-		pathNodes, err := i.nodeRepository.SelectNodesFromWayID(way.OsmID)
-		if err != nil {
-			return nil, fmt.Errorf("error while selecting nodes from way: %s", err.Error())
+		if len(ways) > 1 {
+			i.logger.Debug().Msgf("found %d ways between node %d and %d", len(ways), prevNode.OsmID, n.OsmID)
 		}
+
+		for _, w := range ways {
+			cPathNodes, err := i.crossingRepository.SelectCrossingsFromWayID(w.OsmID)
+			if err != nil {
+				return nil, 0.0, fmt.Errorf("error while selecting nodes from way: %s", err.Error())
+			}
+
+			cPathNodes = i.weightRepository.CutPathNodes(&crossing.Crossing{Node: *prevNode}, w, cPathNodes)
+
+			dist := i.weightRepository.CalculateDistances(prevNode, w, cPathNodes, n)
+			if dist < shortestLength {
+				shortestLength = dist
+				way = w
+				pathNodes = cPathNodes
+			}
+		}
+
+		lengthInMeters += shortestLength
 
 		startIndex := -1
 		endIndex := -1
@@ -161,7 +181,7 @@ func (i *impl) BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error) {
 		}
 
 		if startIndex == -1 || endIndex == -1 {
-			return nil, fmt.Errorf("node %d or %d not found in way %d", prevNode.OsmID, n.OsmID, way.OsmID)
+			return nil, 0.0, fmt.Errorf("node %d or %d not found in way %d", prevNode.OsmID, n.OsmID, way.OsmID)
 		}
 
 		if startIndex > endIndex {
@@ -177,7 +197,7 @@ func (i *impl) BuildGeojsonLineFromPath(path []int64) ([]geojson.Point, error) {
 		prevNode = n
 	}
 
-	return points, nil
+	return points, lengthInMeters, nil
 }
 
 func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
