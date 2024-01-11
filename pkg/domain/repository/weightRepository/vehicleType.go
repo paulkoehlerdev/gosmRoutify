@@ -24,9 +24,6 @@ var maxVehicleTypeSpeed = map[VehicleType]float64{
 }
 
 func (v VehicleType) isWayTypeAllowed(way way.Way) bool {
-	if way.OsmID == 293556313 {
-		println("wayType", getRoadType(way))
-	}
 
 	wayRoadType := getRoadType(way)
 	switch v {
@@ -48,14 +45,6 @@ func (v VehicleType) maxmimumWayFactor() float64 {
 func (v VehicleType) calcWayFactor(way way.Way) float64 {
 	maxWaySpeed := calcMaxWaySpeed(way)
 
-	if way.OsmID == 159692417 {
-		println("maxWaySpeed", maxWaySpeed, "wayType", getRoadType(way))
-	}
-
-	if way.OsmID == 389295370 {
-		println("maxWaySpeed", maxWaySpeed, "wayType", getRoadType(way))
-	}
-
 	maxWaySpeed = math.Min(maxWaySpeed, maxVehicleTypeSpeed[v])
 
 	return 1 / (maxWaySpeed / 3.6)
@@ -68,10 +57,6 @@ const (
 func (v VehicleType) calcCrossingFactor(prev, curr, next *node.Node) float64 {
 	if prev == nil || curr == nil || next == nil {
 		return 0
-	}
-
-	if curr.OsmID == 16526339 {
-		println("curr", curr.OsmID)
 	}
 
 	if v != Car {
@@ -102,12 +87,12 @@ func (v VehicleType) calcCrossingFactor(prev, curr, next *node.Node) float64 {
 
 	// uturn
 	if math.Abs(phi) > (math.Pi - tenDegree) {
-		return 15
+		return 30
 	}
 
 	// left
 	if phi < 0 {
-		return 10
+		return 15
 	}
 
 	// right

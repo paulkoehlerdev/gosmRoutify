@@ -72,10 +72,6 @@ func (i *impl) CalculateWeights(prevNode *node.Node, from *crossing.Crossing, ov
 		out[crossing.OsmID] = length*
 			vehicleType.calcWayFactor(*over) +
 			vehicleType.calcCrossingFactor(prevNode, &from.Node, &crossing.Node)
-
-		if out[crossing.OsmID] < 0.00000001 {
-			println("")
-		}
 	}
 
 	return out

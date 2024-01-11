@@ -146,9 +146,10 @@ func isUrbanStreetFuzzy(way way.Way) bool {
 		return true
 	}
 
-	if l, ok := way.Tags["lit"]; ok && (l == "yes" || l == "true" || l == "1") {
-		return true
-	}
+	// This doesn't make much sense :)
+	//if l, ok := way.Tags["lit"]; ok && (l == "yes" || l == "true" || l == "1") {
+	//	return true
+	//}
 
 	if s, ok := way.Tags["sidewalk"]; ok && (s == "yes" || s == "true" || s == "1" || s == "left" || s == "right" || s == "both" || s == "separate") {
 		return true
