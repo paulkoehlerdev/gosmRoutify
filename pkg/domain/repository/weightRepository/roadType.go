@@ -2,6 +2,7 @@ package weightRepository
 
 import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/way"
+	"math"
 	"strconv"
 )
 
@@ -65,6 +66,10 @@ func getRoadType(way way.Way) roadType {
 		return rural
 	}
 
+	if isUrbanStreet(way) {
+		return urban
+	}
+
 	if isCycleStreet(way) {
 		return cycleStreet
 	}
@@ -73,7 +78,7 @@ func getRoadType(way way.Way) roadType {
 		return livingStreet
 	}
 
-	if isUrbanStreet(way) {
+	if isUrbanStreetFuzzy(way) {
 		return urban
 	}
 
@@ -117,7 +122,7 @@ func isUrbanStreet(way way.Way) bool {
 	if m, ok := way.Tags["maxspeed"]; ok {
 		maxspeed, err := strconv.ParseFloat(m, 64)
 		if err == nil {
-			if maxspeed <= 50 {
+			if math.Abs(maxspeed-50) < 0.000001 {
 				return true
 			}
 		}
@@ -128,6 +133,32 @@ func isUrbanStreet(way way.Way) bool {
 	}
 
 	if r, ok := way.Tags["rural"]; ok && r == "no" {
+		return true
+	}
+
+	return false
+}
+
+func isUrbanStreetFuzzy(way way.Way) bool {
+	// highway~living_street|residential or lit=yes or {sidewalk~yes|both|left|right|separate or sidewalk:left~yes|separate or sidewalk:right~yes|separate or sidewalk:both~yes|separate}
+
+	if ls, ok := way.Tags["highway"]; ok && (ls == "living_street" || ls == "residential") {
+		return true
+	}
+
+	if l, ok := way.Tags["lit"]; ok && (l == "yes" || l == "true" || l == "1") {
+		return true
+	}
+
+	if s, ok := way.Tags["sidewalk"]; ok && (s == "yes" || s == "true" || s == "1" || s == "left" || s == "right" || s == "both" || s == "separate") {
+		return true
+	}
+
+	if s, ok := way.Tags["sidewalk:left"]; ok && (s == "yes" || s == "true" || s == "1" || s == "separate") {
+		return true
+	}
+
+	if s, ok := way.Tags["sidewalk:right"]; ok && (s == "yes" || s == "true" || s == "1" || s == "separate") {
 		return true
 	}
 

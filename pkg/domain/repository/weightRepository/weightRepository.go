@@ -82,19 +82,19 @@ func (i *impl) CalculateWeights(prevNode *node.Node, from *crossing.Crossing, ov
 }
 
 func (i *impl) cutOneway(from crossing.Crossing, over way.Way, to []*crossing.Crossing) []*crossing.Crossing {
+	fromIndex := -1
+	for i, n := range to {
+		if n.OsmID == from.OsmID {
+			fromIndex = i
+			break
+		}
+	}
+
+	if fromIndex == -1 {
+		return nil
+	}
+
 	if oneway, ok := over.Tags["oneway"]; ok && !(oneway == "no" || oneway == "false" || oneway == "0") {
-		fromIndex := -1
-		for i, n := range to {
-			if n.OsmID == from.OsmID {
-				fromIndex = i
-				break
-			}
-		}
-
-		if fromIndex == -1 {
-			return nil
-		}
-
 		if oneway == "yes" || oneway == "true" || oneway == "1" {
 			return to[fromIndex:]
 		}
@@ -102,6 +102,10 @@ func (i *impl) cutOneway(from crossing.Crossing, over way.Way, to []*crossing.Cr
 		if oneway == "-1" || oneway == "reverse" {
 			return to[:fromIndex+1]
 		}
+	}
+
+	if j, ok := over.Tags["junction"]; ok && (j == "roundabout" || j == "circular") {
+		return to[fromIndex:]
 	}
 
 	return to
