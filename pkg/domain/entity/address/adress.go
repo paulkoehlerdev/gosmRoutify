@@ -1,6 +1,8 @@
 package address
 
 type Address struct {
+	OsmID int64
+
 	Lat float64
 	Lon float64
 

@@ -17,6 +17,7 @@ type AddressService interface {
 	CommitBulkInsert() error
 
 	GetSearchResultsFromAddress(address string) ([]*address.Address, error)
+	SelectAddressByID(id int64) (*address.Address, error)
 }
 
 type impl struct {
@@ -51,10 +52,14 @@ func (i *impl) InsertAddressBulk(n address.Address) error {
 func (i *impl) CommitBulkInsert() error {
 	err := i.addressRepository.InsertAddresses(i.bulkInsertBuffer)
 	if err != nil {
-		return fmt.Errorf("error while inserting nodes: %s", err.Error())
+		return fmt.Errorf("error while inserting address: %s", err.Error())
 	}
 	i.bulkInsertBuffer = make([]address.Address, 0, bulkInsertBufferSize)
 	return nil
+}
+
+func (i *impl) SelectAddressByID(id int64) (*address.Address, error) {
+	return i.addressRepository.SelectAddressByID(id)
 }
 
 func (i *impl) GetSearchResultsFromAddress(address string) ([]*address.Address, error) {
@@ -67,9 +72,9 @@ func (i *impl) GetSearchResultsFromAddress(address string) ([]*address.Address, 
 }
 
 var (
-	nonWordRegex = regexp.MustCompile(`[^a-zA-Z0-9äöüß]+`)
+	nonWordRegex = regexp.MustCompile(`[^a-zA-Z0-9äöüß\-.]+`)
 )
 
 func preprocessSearchQuery(query string) string {
-	return nonWordRegex.ReplaceAllString(query, " AND ")
+	return nonWordRegex.ReplaceAllString(query, " ") + "*"
 }

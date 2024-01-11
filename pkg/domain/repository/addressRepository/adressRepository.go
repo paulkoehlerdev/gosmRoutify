@@ -14,6 +14,7 @@ type AddressRepository interface {
 	InsertAddresses(addresses []address.Address) error
 
 	GetAddressesFromSearchQuery(address string) ([]*address.Address, error)
+	SelectAddressByID(id int64) (*address.Address, error)
 }
 
 type impl struct {
@@ -22,8 +23,9 @@ type impl struct {
 }
 
 type preparedStatements struct {
-	insertAddress   *sql.Stmt
-	selectAddresses *sql.Stmt
+	insertAddress     *sql.Stmt
+	selectAddresses   *sql.Stmt
+	selectAddressByID *sql.Stmt
 }
 
 func New(db database.Database) AddressRepository {
@@ -49,16 +51,22 @@ func (i *impl) Init() error {
 func (i *impl) prepareStatements() error {
 	insertAddress, err := i.db.Prepare(insertAddress)
 	if err != nil {
-		return fmt.Errorf("error while preparing statement: %s", err.Error())
+		return fmt.Errorf("error while preparing insert statement: %s", err.Error())
 	}
 
 	selectAddresses, err := i.db.Prepare(selectAddresses)
 	if err != nil {
-		return fmt.Errorf("error while preparing statement: %s", err.Error())
+		return fmt.Errorf("error while preparing select statement: %s", err.Error())
+	}
+
+	selectAddressByID, err := i.db.Prepare(selectAddressByID)
+	if err != nil {
+		return fmt.Errorf("error while preparing select by id statement: %s", err.Error())
 	}
 
 	i.preparedStatements.insertAddress = insertAddress
 	i.preparedStatements.selectAddresses = selectAddresses
+	i.preparedStatements.selectAddressByID = selectAddressByID
 
 	return nil
 }
@@ -69,7 +77,7 @@ func (i *impl) InsertAddress(address address.Address) error {
 	}
 
 	_, err := i.preparedStatements.insertAddress.Exec(
-		address.Lat, address.Lon,
+		address.OsmID, address.Lat, address.Lon,
 		address.Housenumber, address.Street, address.City, address.Postcode, address.Country,
 		address.Suburb, address.State, address.Province, address.Floor,
 		address.Name,
@@ -95,7 +103,7 @@ func (i *impl) InsertAddresses(addresses []address.Address) error {
 
 	for _, address := range addresses {
 		_, err = insertAddress.Exec(
-			address.Lat, address.Lon,
+			address.OsmID, address.Lat, address.Lon,
 			address.Housenumber, address.Street, address.City, address.Postcode, address.Country,
 			address.Suburb, address.State, address.Province, address.Floor,
 			address.Name,
@@ -129,7 +137,7 @@ func (i *impl) GetAddressesFromSearchQuery(query string) ([]*address.Address, er
 	for rows.Next() {
 		var address address.Address
 		err := rows.Scan(
-			&address.Lat, &address.Lon,
+			&address.OsmID, &address.Lat, &address.Lon,
 			&address.Housenumber, &address.Street, &address.City, &address.Postcode, &address.Country,
 			&address.Suburb, &address.State, &address.Province, &address.Floor,
 			&address.Name,
@@ -143,4 +151,33 @@ func (i *impl) GetAddressesFromSearchQuery(query string) ([]*address.Address, er
 	}
 
 	return addresses, nil
+}
+
+func (i *impl) SelectAddressByID(id int64) (*address.Address, error) {
+	if i.preparedStatements.selectAddressByID == nil {
+		return nil, fmt.Errorf("statements not prepared: you need to call Init() before you can call SelectAddressByID()")
+	}
+
+	rows, err := i.preparedStatements.selectAddresses.Query(id)
+	if err != nil {
+		return nil, fmt.Errorf("error while selecting addresses: %s", err.Error())
+	}
+
+	defer rows.Close()
+
+	var address address.Address
+	for rows.Next() {
+		err := rows.Scan(
+			&address.OsmID, &address.Lat, &address.Lon,
+			&address.Housenumber, &address.Street, &address.City, &address.Postcode, &address.Country,
+			&address.Suburb, &address.State, &address.Province, &address.Floor,
+			&address.Name,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("error while scanning address: %s", err.Error())
+		}
+	}
+
+	return &address, nil
 }

@@ -59,7 +59,7 @@ func (i *impl) Load(data bool, address bool) error {
 		i.logger,
 	)
 	thirdPassFilter := osmdatarepository.NewBinaryOsmDataFilter(
-		false, true, true,
+		false, false, true,
 	)
 
 	if data {

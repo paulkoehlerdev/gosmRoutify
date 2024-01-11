@@ -1,5 +1,4 @@
 //go:build json && fts5
-// +build json,fts5
 
 package main
 

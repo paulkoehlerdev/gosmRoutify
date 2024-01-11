@@ -3,8 +3,7 @@ package addressRepository
 const (
 	dataModel = `
 CREATE VIRTUAL TABLE IF NOT EXISTS address USING fts5(
-    Lat, -- float64 as text
-    Lon, -- float64 as text
+    OsmID, -- int64 as text
 
     Housenumber, -- text
     Street, -- text
@@ -23,20 +22,30 @@ CREATE VIRTUAL TABLE IF NOT EXISTS address USING fts5(
 
 	insertAddress = `
 INSERT INTO address (
-	Lat, Lon,
+	OsmID, Lat, Lon,
 	Housenumber, Street, City, Postcode, Country,
 	Suburb, State, Province, Floor, 
 	Name
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 `
 
 	selectAddresses = `
 SELECT
-	Lat, Lon,
+    OsmID, Lat, Lon,
+	Housenumber, Street, City, Postcode, Country,
+	Suburb, State, Province, Floor,
+	Name
+FROM address(?)
+LIMIT 5;
+`
+
+	selectAddressByID = `
+SELECT
+	OsmID, Lat, Lon,
 	Housenumber, Street, City, Postcode, Country,
 	Suburb, State, Province, Floor,
 	Name
 FROM address
-WHERE address MATCH ?;
+WHERE OsmID = ?;
 `
 )

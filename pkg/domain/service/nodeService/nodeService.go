@@ -15,6 +15,7 @@ type NodeService interface {
 	InsertNodeBulk(node node.Node) error
 	CommitBulkInsert() error
 
+	SelectNodeFromID(id int64) (*node.Node, error)
 	SelectNodesFromIDs(ids []int64) ([]*node.Node, error)
 }
 
@@ -56,10 +57,14 @@ func (i *impl) CommitBulkInsert() error {
 	return nil
 }
 
+func (i *impl) SelectNodeFromID(id int64) (*node.Node, error) {
+	return i.nodeRepository.SelectNodeFromID(id)
+}
+
 func (i *impl) SelectNodesFromIDs(ids []int64) ([]*node.Node, error) {
 	var out []*node.Node
 	for _, id := range ids {
-		node, err := i.nodeRepository.SelectNodeFromID(id)
+		node, err := i.SelectNodeFromID(id)
 		if err != nil {
 			return nil, fmt.Errorf("error while selecting node from id: %s", err.Error())
 		}

@@ -14,6 +14,7 @@ import (
 type Application interface {
 	FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error)
 	FindAddresses(query string) ([]*address.Address, error)
+	FindAddressByID(id int64) (*address.Address, error)
 }
 
 const (
@@ -83,4 +84,8 @@ func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Poin
 
 func (i *impl) FindAddresses(query string) ([]*address.Address, error) {
 	return i.addressService.GetSearchResultsFromAddress(query)
+}
+
+func (i *impl) FindAddressByID(id int64) (*address.Address, error) {
+	return i.addressService.SelectAddressByID(id)
 }

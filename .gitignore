@@ -1,5 +1,5 @@
 config.json
 *.log
-bin/
+tmp/
 resources/data/
 resources/graph/
