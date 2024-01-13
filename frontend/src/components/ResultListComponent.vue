@@ -1,21 +1,28 @@
 <script setup lang="ts">
 import type { Address } from '@/api/entities/address';
 import ResultComponent from '@/components/ResultComponent.vue'
-import type { Point } from '@/api/entities/point'
+import { inject, ref, type Ref } from 'vue'
+import type { Emitter, EventType } from 'mitt'
 
-defineProps<{
-  list: Address[],
-}>();
+const list: Ref<Address[]> = ref([]);
+const currentIndex: Ref<number | undefined> = ref(undefined);
 
-const emit = defineEmits<{
-  (e: 'triggerFocus', value: { address: Address, p: Point }): void
-}>()
+const eventBus = inject('eventBus') as Emitter<Record<EventType, any>>;
+
+eventBus.on('searchQueryResults', ({ results, index }) => {
+  list.value = results;
+  currentIndex.value = index;
+});
+
+eventBus.on('selectAddress', () => {
+  list.value = [];
+});
 
 </script>
 
 <template>
 
-<ResultComponent v-for="item in list" :address="item" @triggerFocus="(val) => {emit('triggerFocus', val)}"/>
+<ResultComponent v-for="item in list" :address="item" :index="currentIndex"/>
 
 </template>
 

@@ -1,9 +1,9 @@
 import type { Address } from './entities/address';
 import axios from 'axios'
-import type { Point } from '@/api/entities/point'
+import { LatLng } from 'leaflet'
 
 const api = axios.create({
-  baseURL: 'http://localhost:3000/'
+  baseURL: import.meta.env.API_URL ?? 'http://localhost:3000'
 })
 
 export async function fetchAddresses(query: string): Promise<Address[]> {
@@ -11,7 +11,13 @@ export async function fetchAddresses(query: string): Promise<Address[]> {
   return res.data as Address[]
 }
 
-export async function fetchLocateAddress(address: Address): Promise<Point> {
+export async function fetchLocateAddress(address: Address): Promise<LatLng> {
   const res = await api.get(`/api/locate?id=${address.OsmID}`)
-  return res.data as Point
+  return new LatLng(res.data[1], res.data[0])
+}
+
+export async function fetchRoute(points: LatLng[]): Promise<{ geojson:any, time:number, distance:number }[]> {
+  const pointString = encodeURIComponent(btoa(JSON.stringify(points.map((p) => [p.lng, p.lat]))));
+  const res = await api.get(`/api/route?r=${pointString}`)
+  return res.data
 }

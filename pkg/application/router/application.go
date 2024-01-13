@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/address"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/node"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/addressService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeService"
@@ -12,8 +13,14 @@ import (
 	"time"
 )
 
+type RouteSegmentInfo struct {
+	LengthInMeters float64         `json:"distance"`
+	LengthInTime   int64           `json:"time"`
+	GeoJson        geojson.GeoJson `json:"geojson"`
+}
+
 type Application interface {
-	FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error)
+	FindRoute(points []geojson.Point) ([]RouteSegmentInfo, error)
 	FindAddresses(query string) ([]*address.Address, error)
 	LocateAddressByID(id int64) (geojson.Point, error)
 }
@@ -38,51 +45,64 @@ func New(graphService graphService.GraphService, addressService addressService.A
 	}
 }
 
-func (i *impl) FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error) {
+func (i *impl) FindRoute(points []geojson.Point) ([]RouteSegmentInfo, error) {
 	startTime := time.Now()
 
-	startNode, err := i.graphService.GetNearestNode(start.Lon(), start.Lat())
-	if err != nil {
-		return nil, fmt.Errorf("error while finding nearest node at start: %s", err.Error())
-	}
+	out := make([]RouteSegmentInfo, 0, len(points)-1)
 
-	endNode, err := i.graphService.GetNearestNode(end.Lon(), end.Lat())
-	if err != nil {
-		return nil, fmt.Errorf("error while finding nearest node at end: %s", err.Error())
+	nodes := make([]*node.Node, len(points))
+	for index, point := range points {
+		node, err := i.graphService.GetNearestNode(point.Lon(), point.Lat())
+		if err != nil {
+			return nil, fmt.Errorf("error while finding nearest node to [%f, %f]: %s", point.Lat(), point.Lon(), err.Error())
+		}
+
+		nodes[index] = node
 	}
 
 	i.logger.Debug().Msgf("calculated nearest node in %s", time.Since(startTime).String())
 
-	if endNode == nil {
-		return nil, fmt.Errorf("no end node found")
+	start := nodes[0]
+	for index, end := range nodes[1:] {
+		path, length, err := astar.AStar[int64, float64](start.OsmID, end.OsmID, i.graphService.GetEdges(*end), i.graphService.GetHeuristic(*end), maxVisitedNodes)
+		if err != nil {
+			return nil, fmt.Errorf("error while routing: %s", err.Error())
+		}
+
+		nodePoints, lengthInMeters, err := i.graphService.CalculatePathInformation(path)
+		if err != nil {
+			return nil, fmt.Errorf("error while building geojson line: %s", err.Error())
+		}
+
+		nodePoints = append(
+			[]geojson.Point{points[index]},
+			nodePoints...,
+		)
+
+		nodePoints = append(
+			nodePoints,
+			points[index+1],
+		)
+
+		geometry := geojson.LineString(nodePoints).ToGeometry()
+
+		geoJson := geojson.NewEmptyGeoJson()
+		geoJson.AddFeature(geojson.Feature{
+			Type:       "Feature",
+			Geometry:   geometry,
+			Properties: nil,
+		})
+
+		out = append(out, RouteSegmentInfo{
+			LengthInMeters: lengthInMeters,
+			LengthInTime:   int64(length),
+			GeoJson:        geoJson,
+		})
+
+		start = end
 	}
 
-	path, length, err := astar.AStar[int64, float64](startNode.OsmID, endNode.OsmID, i.graphService.GetEdges(*endNode), i.graphService.GetHeuristic(*endNode), maxVisitedNodes)
-	if err != nil {
-		return nil, fmt.Errorf("error while routing: %s", err.Error())
-	}
-
-	nodePoints, lengthInMeters, err := i.graphService.CalculatePathInformation(path)
-	if err != nil {
-		return nil, fmt.Errorf("error while building geojson line: %s", err.Error())
-	}
-
-	i.logger.Debug().Msgf("calculated route in %s", time.Since(startTime).String())
-	i.logger.Debug().Msgf("route length (time): %s", time.Duration(length)*time.Second)
-	i.logger.Debug().Msgf("route length (distance): %.3fkm", lengthInMeters/1000)
-	i.logger.Debug().WithAttrs("elements", path).Msgf("route length (elements): %v", len(path))
-
-	nodePoints = append(
-		[]geojson.Point{start},
-		nodePoints...,
-	)
-
-	nodePoints = append(
-		nodePoints,
-		end,
-	)
-
-	return nodePoints, nil
+	return out, nil
 }
 
 func (i *impl) FindAddresses(query string) ([]*address.Address, error) {

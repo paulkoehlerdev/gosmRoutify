@@ -1,24 +1,32 @@
 <script setup lang="ts">
 import type { Address } from '@/api/entities/address'
 import { fetchLocateAddress } from '@/api/api'
-import type { Point } from '@/api/entities/point'
+import { inject } from 'vue'
+import type { Emitter, EventType } from 'mitt'
+import type { LatLng } from 'leaflet'
 
-defineProps<{
+const props = defineProps<{
   address?: Address,
+  index?: number,
 }>()
 
-const emit = defineEmits<{
-  (e: 'triggerFocus', value: { address: Address, p: Point }): void
-}>()
+const eventBus = inject('eventBus') as Emitter<Record<EventType, any>>;
 
-function centerPoint(address: Address | undefined) {
-  if (address === undefined) {
-    return
+function centerPoint() {
+  if (props.address === undefined) {
+    return;
   }
 
-  fetchLocateAddress(address).then((p: Point) => {
-    emit('triggerFocus', { address, p })
-  })
+  fetchLocateAddress(props.address).then((p: LatLng) => {
+    eventBus.emit('focusPoint', p)
+  }).catch(console.log);
+}
+
+function selectPoint() {
+  eventBus.emit('selectAddress', {
+    address: props.address,
+    index: props.index,
+  });
 }
 
 </script>
@@ -36,7 +44,7 @@ function centerPoint(address: Address | undefined) {
         </div>
 
         <div class="col-auto d-flex align-items-center">
-          <button class="btn btn-primary" @mouseenter="centerPoint(address)">
+          <button class="btn btn-primary" @mouseenter="centerPoint" @click="selectPoint">
             <i class="bi bi-geo-alt-fill"></i>
           </button>
         </div>

@@ -1,29 +1,77 @@
 <script setup lang="ts">
 import "bootstrap";
 import SearchbarComponent from '@/components/SearchbarComponent.vue'
-import { fetchAddresses } from '@/api/api'
 import ResultListComponent from '@/components/ResultListComponent.vue'
-import { type Ref, ref } from 'vue'
+import { inject, ref, type Ref } from 'vue'
 import type { Address } from '@/api/entities/address'
-import { debounce } from 'lodash'
-import type { Point } from '@/api/entities/point'
+import type { Emitter, EventType } from 'mitt'
+import type { LatLng } from 'leaflet'
+import { fetchLocateAddress, fetchRoute } from '@/api/api'
+import RouteInformationComponent from '@/components/RouteInformationComponent.vue'
 
-const props = defineProps<{
-  mapRef?: Ref
-}>()
+const eventBus = inject('eventBus') as Emitter<Record<EventType, any>>;
 
-const resultList: Ref<Address[]> = ref([])
+const selectedAddresses: Ref<{
+  query: string,
+  address?: Address
+  point?: LatLng
+}[]> = ref([
+  { query: "", address: undefined, point: undefined },
+  { query: "", address: undefined, point: undefined },
+])
 
-function onSearchChange(value: string) {
-  fetchAddresses(value).then(val => resultList.value = val).catch(() => {})
+type searchType = "start" | "point" | "end";
+function indexToSearchtype(index: number, length: number): searchType {
+  if (index === 0) {
+    return "start"
+  }
+
+  if (index === length - 1) {
+    return "end"
+  }
+
+  return "point"
 }
 
-function onFocusEvent(value: { address: Address, p: Point }) {
-  console.log(value);
-  props.mapRef?.value.focusPoint(value.p)
-}
+eventBus.on('searchQuery', ({ query, index }) => {
+  selectedAddresses.value[index].query = query;
+});
 
-const onSearchChangeDebounced = debounce(onSearchChange, 500);
+const route: Ref<{ geojson:any, time:number, distance:number }[] | undefined> = ref(undefined);
+const loading: Ref<boolean> = ref(false);
+const error: Ref<string | undefined> = ref(undefined);
+
+eventBus.on('selectAddress', async ({ address, index }) => {
+  selectedAddresses.value[index].address = address
+
+  if (!selectedAddresses.value.map((v) => v.address === undefined).reduce((a, b) => a || b, false)) {
+    const addresses = await Promise.all(selectedAddresses.value.map(async (v) => {
+      const point = await fetchLocateAddress(v.address as Address)
+      return { ...v, point }
+    }));
+
+    loading.value = true;
+    eventBus.emit('startRoute', { addresses })
+  } else {
+    route.value = undefined;
+    error.value = undefined;
+  }
+});
+
+eventBus.on('startRoute', async ({ addresses }: {addresses: { point: LatLng }[]}) => {
+  try {
+    route.value = await fetchRoute(addresses.map((v) => v.point))
+
+    eventBus.emit('foundRoute', { route: route.value });
+    loading.value = false;
+    error.value = undefined;
+
+  } catch (e) {
+    loading.value = false;
+    route.value = undefined;
+    error.value = "Beim Planen der Route ist ein Fehler aufgetreten";
+  }
+});
 
 </script>
 
@@ -31,9 +79,12 @@ const onSearchChangeDebounced = debounce(onSearchChange, 500);
   <div class="m-4" id="sidebar">
     <div class="row">
       <div class="col">
-        <SearchbarComponent type="start" @update="onSearchChangeDebounced"/>
-        <SearchbarComponent type="end" @update="onSearchChangeDebounced"/>
-        <ResultListComponent :list=resultList @triggerFocus="onFocusEvent"/>
+        <SearchbarComponent v-for="({ address }, index) in selectedAddresses"
+                            :type="indexToSearchtype(index, selectedAddresses.length)"
+                            :index="index"
+                            :address="address"/>
+        <RouteInformationComponent :route="route" :loading="loading" :error="error"/>
+        <ResultListComponent />
       </div>
     </div>
   </div>

@@ -1,10 +1,12 @@
 package http
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/application/router"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/config"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 	"net/http"
 	"strconv"
@@ -27,6 +29,7 @@ func NewHttpServer(
 		application: application,
 	}
 
+	mux.HandleFunc("/api/route", server.route)
 	mux.HandleFunc("/api/locate", server.locate)
 	mux.HandleFunc("/api/search", server.search)
 
@@ -34,6 +37,50 @@ func NewHttpServer(
 		Addr:    fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port),
 		Handler: mux,
 	}, nil
+}
+
+func (i *impl) route(w http.ResponseWriter, r *http.Request) {
+	routeQueryB64 := r.URL.Query().Get("r")
+
+	routeQuery, err := base64.URLEncoding.DecodeString(routeQueryB64)
+	if err != nil {
+		http.Error(w, "invalid route query", http.StatusBadRequest)
+		return
+	}
+
+	var points []geojson.Point
+	err = json.Unmarshal(routeQuery, &points)
+	if err != nil {
+		http.Error(w, "invalid route query", http.StatusBadRequest)
+		return
+	}
+
+	if len(points) < 2 {
+		http.Error(w, "invalid route query", http.StatusBadRequest)
+		return
+	}
+
+	route, err := i.application.FindRoute(points)
+	if err != nil {
+		i.logger.Error().Msgf("error while finding route: %s", err.Error())
+		http.Error(w, fmt.Sprintf("error while finding route: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	routeBytes, err := json.Marshal(route)
+	if err != nil {
+		i.logger.Error().Msgf("error while marshalling route: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(routeBytes)
+	if err != nil {
+		i.logger.Error().Msgf("error while writing response: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func (i *impl) locate(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +106,7 @@ func (i *impl) locate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(positionBytes)
 	if err != nil {
 		i.logger.Error().Msgf("error while writing response: %s", err.Error())
@@ -84,6 +132,7 @@ func (i *impl) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(addressBytes)
 	if err != nil {
 		i.logger.Error().Msgf("error while writing response: %s", err.Error())
