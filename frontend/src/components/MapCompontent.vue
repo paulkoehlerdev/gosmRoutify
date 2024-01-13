@@ -65,7 +65,7 @@ eventBus.on('startRoute', ({ addresses }) => {
 });
 
 eventBus.on('foundRoute', ({ route }) => {
-  route.forEach(({ geojson }) => {
+  route.forEach(({ geojson }: { geojson: any }) => {
     if (focusPointGroup.value === undefined) {
       return
     }

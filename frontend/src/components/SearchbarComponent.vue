@@ -45,9 +45,7 @@ const placeholder = computed(() => {
 
 const value: Ref<string | undefined> = ref(undefined)
 
-function emitChange(event: Event) {
-  value.value = event.target?.value
-
+function emitChange() {
   eventBus.emit('searchQuery', {
     query: value.value,
     index: props.index
@@ -99,7 +97,7 @@ function unselectResult() {
            class="form-control"
            :disabled="address !== undefined"
            :placeholder=placeholder
-           :value="getValue()"
+           v-model=value
            @focus="emitChange"
            @input="emitChange"
     />
