@@ -20,6 +20,8 @@ type NodeRepository interface {
 	SelectNodeIDsFromWayID(wayID int64) ([]int64, error)
 	SelectNodesFromWayID(wayID int64) ([]*node.Node, error)
 
+	SelectCenterOfWayID(wayID int64) (lat, lon float64, err error)
+
 	SelectNearNodesApprox(lat float64, lon float64, radius float64) ([]*node.Node, error)
 }
 
@@ -37,6 +39,8 @@ type preparedStatements struct {
 
 	selectNodesFromWayID   *sql.Stmt
 	selectNodeIDsFromWayID *sql.Stmt
+
+	selectCenterOfWayID *sql.Stmt
 
 	selectNearNodes *sql.Stmt
 }
@@ -87,12 +91,19 @@ func (i *impl) prepareStatements() error {
 		return fmt.Errorf("error while preparing select from nodeid statement: %s", err.Error())
 	}
 
+	selectCenterOfWayID, err := i.db.Prepare(selectCenterOfWayID)
+	if err != nil {
+		return fmt.Errorf("error while preparing select center of way statement: %s", err.Error())
+	}
+
 	i.preparedStatements.insertNode = insertNode
 
 	i.preparedStatements.selectNodeFromID = selectNodeFromID
 
 	i.preparedStatements.selectNodeIDsFromWayID = selectNodeIDsFromWayID
 	i.preparedStatements.selectNodesFromWayID = selectNodesFromWayID
+
+	i.preparedStatements.selectCenterOfWayID = selectCenterOfWayID
 
 	i.preparedStatements.selectNearNodes = selectNearNodes
 
@@ -254,6 +265,19 @@ func (i *impl) SelectNodesFromWayID(wayID int64) ([]*node.Node, error) {
 	}
 
 	return nodes, nil
+}
+
+func (i *impl) SelectCenterOfWayID(wayID int64) (lat, lon float64, err error) {
+	if i.preparedStatements.selectCenterOfWayID == nil {
+		return 0, 0, fmt.Errorf("statements not prepared: you need to call Init() before you can call SelectCenterOfWayID()")
+	}
+
+	err = i.preparedStatements.selectCenterOfWayID.QueryRow(wayID).Scan(&lat, &lon)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error while selecting center of way: %s", err.Error())
+	}
+
+	return lat, lon, nil
 }
 
 func (i *impl) SelectNearNodesApprox(lat float64, lon float64, radius float64) ([]*node.Node, error) {

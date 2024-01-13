@@ -33,7 +33,6 @@ INSERT INTO wayToNodeRelation (node_id, way_id, position) VALUES (?, ?, ?);
 `
 
 	updateCrossings = `
-UPDATE wayToNodeRelation SET is_crossing = false WHERE 1;
 UPDATE wayToNodeRelation SET is_crossing = true WHERE (
       SELECT COUNT(*) FROM wayToNodeRelation AS rel WHERE rel.node_id = wayToNodeRelation.node_id
 ) >= 2;

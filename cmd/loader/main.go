@@ -23,9 +23,6 @@ func main() {
 	importFile := flag.String("import", "", "import file")
 	databaseFile := flag.String("database", "", "database file")
 
-	importData := flag.Bool("data", false, "import data")
-	importAddress := flag.Bool("address", false, "import address")
-
 	flag.Parse()
 
 	if importFile == nil || databaseFile == nil {
@@ -33,21 +30,6 @@ func main() {
 	}
 
 	logger := logging.New(logging.LevelDebug, os.Stdout)
-
-	if importData == nil {
-		importData = new(bool)
-		*importData = false
-	}
-
-	if importAddress == nil {
-		importAddress = new(bool)
-		*importAddress = false
-	}
-
-	if *importData == false && *importAddress == false {
-		logger.Error().Msgf("no import type provided")
-		return
-	}
 
 	db, err := database.New(*databaseFile)
 	if err != nil {
@@ -92,7 +74,7 @@ func main() {
 
 	application := loader.New(osmdataSvc, nodeSvc, waySvc, addrSvc, logger.WithAttrs("application", "loader"))
 
-	err = application.Load(*importData, *importAddress)
+	err = application.Load()
 	if err != nil {
 		logger.Error().Msgf("error while loading data: %s", err.Error())
 		return

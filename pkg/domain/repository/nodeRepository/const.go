@@ -34,6 +34,10 @@ SELECT osm_id, lat, lon, tags FROM node
 	ORDER BY relation.position ASC;
 `
 
+	selectCenterOfWayID = `
+SELECT AVG(lat), AVG(lon) FROM wayToNodeRelation JOIN node ON wayToNodeRelation.node_id = node.osm_id WHERE way_id = ?;
+`
+
 	selectNearNodes = `
 SELECT node.osm_id, node.lat, node.lon, node.tags FROM node
   	WHERE node.lat BETWEEN ? AND ? AND node.lon BETWEEN ? AND ?

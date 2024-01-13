@@ -11,7 +11,7 @@ import (
 )
 
 type Loader interface {
-	Load(data, address bool) error
+	Load() error
 }
 
 type impl struct {
@@ -36,9 +36,10 @@ func New(dataService osmdataservice.OsmDataService, nodeService nodeService.Node
 	}
 }
 
-func (i *impl) Load(data bool, address bool) error {
+func (i *impl) Load() error {
 	firstPassProcessor := newFirstPassProcessor(
 		i.wayService,
+		i.addressService,
 		i.logger,
 	)
 	firstPassFilter := osmdatarepository.NewBinaryOsmDataFilter(
@@ -48,37 +49,21 @@ func (i *impl) Load(data bool, address bool) error {
 	secondPassProcessor := newSecondPassProcessor(
 		i.wayService,
 		i.nodeService,
+		i.addressService,
 		i.logger,
 	)
 	secondPassFilter := osmdatarepository.NewBinaryOsmDataFilter(
 		false, true, true,
 	)
 
-	thirdPassProcessor := newThirdPassProcessor(
-		i.addressService,
-		i.logger,
-	)
-	thirdPassFilter := osmdatarepository.NewBinaryOsmDataFilter(
-		false, false, true,
-	)
-
-	if data {
-		err := i.dataService.Process(firstPassProcessor, firstPassFilter)
-		if err != nil {
-			return fmt.Errorf("error while processing first pass: %s", err.Error())
-		}
-
-		err = i.dataService.Process(secondPassProcessor, secondPassFilter)
-		if err != nil {
-			return fmt.Errorf("error while processing second pass: %s", err.Error())
-		}
+	err := i.dataService.Process(firstPassProcessor, firstPassFilter)
+	if err != nil {
+		return fmt.Errorf("error while processing first pass: %s", err.Error())
 	}
 
-	if address {
-		err := i.dataService.Process(thirdPassProcessor, thirdPassFilter)
-		if err != nil {
-			return fmt.Errorf("error while processing third pass: %s", err.Error())
-		}
+	err = i.dataService.Process(secondPassProcessor, secondPassFilter)
+	if err != nil {
+		return fmt.Errorf("error while processing second pass: %s", err.Error())
 	}
 
 	return nil

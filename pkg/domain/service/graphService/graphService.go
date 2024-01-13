@@ -228,11 +228,11 @@ func (i *impl) GetNearestNode(lat float64, lon float64) (*node.Node, error) {
 		}
 	}
 
+	i.logger.WithAttrs("skipped", skippedNodes).Debug().Msgf("skipped %d nodes without edges", len(skippedNodes))
+
 	if nearestNode == nil {
 		return nil, fmt.Errorf("no near node found (in %f meters)", math.Tan(nearNodesApproxDistance*math.Pi/180)*sphericmath.EarthRadius)
 	}
-
-	i.logger.WithAttrs("skipped", skippedNodes).Debug().Msgf("skipped %d nodes without edges", len(skippedNodes))
 
 	return nearestNode, nil
 }

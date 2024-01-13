@@ -15,7 +15,7 @@
 ## Documentation
 
 The documentation is only available in German. \
-You can find it [here]().
+You can find it [here](https://docs.gosmroutify.xyz).
 
 ## Special Thanks
 

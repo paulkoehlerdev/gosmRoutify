@@ -17,6 +17,8 @@ type NodeService interface {
 
 	SelectNodeFromID(id int64) (*node.Node, error)
 	SelectNodesFromIDs(ids []int64) ([]*node.Node, error)
+
+	LocateOsmID(osmID int64) (lat, lon float64, err error)
 }
 
 type impl struct {
@@ -72,4 +74,18 @@ func (i *impl) SelectNodesFromIDs(ids []int64) ([]*node.Node, error) {
 		out = append(out, node)
 	}
 	return out, nil
+}
+
+func (i *impl) LocateOsmID(osmID int64) (lat, lon float64, err error) {
+	node, err := i.nodeRepository.SelectNodeFromID(osmID)
+	if err == nil {
+		return node.Lat, node.Lon, nil
+	}
+
+	lat, lon, err = i.nodeRepository.SelectCenterOfWayID(osmID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error while locating osmID: %s", err.Error())
+	}
+
+	return lat, lon, nil
 }

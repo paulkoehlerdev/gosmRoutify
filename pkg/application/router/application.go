@@ -5,6 +5,7 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/address"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/addressService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/graphService"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/service/nodeService"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/astar"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/geojson"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
@@ -14,7 +15,7 @@ import (
 type Application interface {
 	FindRoute(start geojson.Point, end geojson.Point) ([]geojson.Point, error)
 	FindAddresses(query string) ([]*address.Address, error)
-	FindAddressByID(id int64) (*address.Address, error)
+	LocateAddressByID(id int64) (geojson.Point, error)
 }
 
 const (
@@ -25,13 +26,15 @@ type impl struct {
 	logger         logging.Logger
 	graphService   graphService.GraphService
 	addressService addressService.AddressService
+	nodeService    nodeService.NodeService
 }
 
-func New(graphService graphService.GraphService, addressService addressService.AddressService, logger logging.Logger) Application {
+func New(graphService graphService.GraphService, addressService addressService.AddressService, nodeService nodeService.NodeService, logger logging.Logger) Application {
 	return &impl{
 		logger:         logger,
 		graphService:   graphService,
 		addressService: addressService,
+		nodeService:    nodeService,
 	}
 }
 
@@ -86,6 +89,11 @@ func (i *impl) FindAddresses(query string) ([]*address.Address, error) {
 	return i.addressService.GetSearchResultsFromAddress(query)
 }
 
-func (i *impl) FindAddressByID(id int64) (*address.Address, error) {
-	return i.addressService.SelectAddressByID(id)
+func (i *impl) LocateAddressByID(id int64) (geojson.Point, error) {
+	lat, lon, err := i.nodeService.LocateOsmID(id)
+	if err != nil {
+		return geojson.Point{}, fmt.Errorf("error while locating address: %s", err.Error())
+	}
+
+	return geojson.NewPoint(lon, lat), nil
 }

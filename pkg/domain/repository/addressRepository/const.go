@@ -22,16 +22,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS address USING fts5(
 
 	insertAddress = `
 INSERT INTO address (
-	OsmID, Lat, Lon,
+	OsmID,
 	Housenumber, Street, City, Postcode, Country,
 	Suburb, State, Province, Floor, 
 	Name
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 `
 
 	selectAddresses = `
 SELECT
-    OsmID, Lat, Lon,
+    OsmID,
 	Housenumber, Street, City, Postcode, Country,
 	Suburb, State, Province, Floor,
 	Name
@@ -41,7 +41,7 @@ LIMIT 5;
 
 	selectAddressByID = `
 SELECT
-	OsmID, Lat, Lon,
+	OsmID,
 	Housenumber, Street, City, Postcode, Country,
 	Suburb, State, Province, Floor,
 	Name

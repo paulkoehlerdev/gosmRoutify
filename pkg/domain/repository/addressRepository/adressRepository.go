@@ -77,7 +77,7 @@ func (i *impl) InsertAddress(address address.Address) error {
 	}
 
 	_, err := i.preparedStatements.insertAddress.Exec(
-		address.OsmID, address.Lat, address.Lon,
+		address.OsmID,
 		address.Housenumber, address.Street, address.City, address.Postcode, address.Country,
 		address.Suburb, address.State, address.Province, address.Floor,
 		address.Name,
@@ -103,7 +103,7 @@ func (i *impl) InsertAddresses(addresses []address.Address) error {
 
 	for _, address := range addresses {
 		_, err = insertAddress.Exec(
-			address.OsmID, address.Lat, address.Lon,
+			address.OsmID,
 			address.Housenumber, address.Street, address.City, address.Postcode, address.Country,
 			address.Suburb, address.State, address.Province, address.Floor,
 			address.Name,
@@ -137,7 +137,7 @@ func (i *impl) GetAddressesFromSearchQuery(query string) ([]*address.Address, er
 	for rows.Next() {
 		var address address.Address
 		err := rows.Scan(
-			&address.OsmID, &address.Lat, &address.Lon,
+			&address.OsmID,
 			&address.Housenumber, &address.Street, &address.City, &address.Postcode, &address.Country,
 			&address.Suburb, &address.State, &address.Province, &address.Floor,
 			&address.Name,
@@ -168,7 +168,7 @@ func (i *impl) SelectAddressByID(id int64) (*address.Address, error) {
 	var address address.Address
 	for rows.Next() {
 		err := rows.Scan(
-			&address.OsmID, &address.Lat, &address.Lon,
+			&address.OsmID,
 			&address.Housenumber, &address.Street, &address.City, &address.Postcode, &address.Country,
 			&address.Suburb, &address.State, &address.Province, &address.Floor,
 			&address.Name,
