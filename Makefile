@@ -4,8 +4,8 @@ build: build-loader build-router
 
 build-loader:
 	@echo "Building loader..."
-	@go build -o bin/loader ./cmd/loader/main.go
+	@CGO_ENABLED=1 go build -tags fts5,json -o bin/loader ./cmd/loader/main.go
 
 build-router:
 	@echo "Building router..."
-	@go build -o bin/router ./cmd/router/main.go
+	@CGO_ENABLED=1 go build -tags fts5,json -o bin/router ./cmd/router/main.go
