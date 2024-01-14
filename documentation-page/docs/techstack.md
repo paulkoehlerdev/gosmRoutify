@@ -39,4 +39,4 @@ Diese Dokumentation wurde mit Docusaurus erstellt. Einem Open-Source-Projekt, da
 
 - [`Docusaurus` https://docusaurus.io](https://docusaurus.io/)
 
-Die Dokumentation ist auf [GitHub Pages](https://pages.github.com/) gehostet.
+Die Dokumentation ist auf [Vercel](https://vercel.com) gehostet.

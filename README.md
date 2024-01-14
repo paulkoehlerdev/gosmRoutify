@@ -57,5 +57,4 @@ I also want to thank [Geofabrik GmbH](https://www.geofabrik.de/) for providing t
 ## Hosting
 
 The demo backend is currently hosted on a VPS and protected by [Cloudflare](https://www.cloudflare.com/).
-The demo frontend is hosted on [Vercel](https://vercel.com).
-The documentation is hosted on [GitHub Pages](https://pages.github.com/).
+The demo frontend and documentation is hosted on [Vercel](https://vercel.com).
