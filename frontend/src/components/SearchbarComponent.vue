@@ -5,7 +5,6 @@ import { debounce } from 'lodash'
 import { fetchAddresses } from '@/api/api'
 import type { Emitter, EventType } from 'mitt'
 import type { Address } from '@/api/entities/address'
-import process from 'process'
 
 export type Type = 'start' | 'point' | 'end';
 
