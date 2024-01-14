@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { inject, onMounted, type Ref, ref } from 'vue'
 import "leaflet/dist/leaflet.css";
-import "leaflet/dist/images/marker-icon.png";
-import "leaflet/dist/images/marker-icon-2x.png";
-import "leaflet/dist/images/marker-shadow.png";
+import markerIconUrl from "@/assets/images/marker-icon.png";
+import markerIconRetinaUrl from "@/assets/images/marker-icon-2x.png";
+import markerShadowUrl from "@/assets/images/marker-shadow.png";
 import L, { Map, LatLng, FeatureGroup } from 'leaflet'
 import type { Emitter, EventType } from 'mitt'
 
@@ -13,6 +13,11 @@ const focusPointGroup: Ref<FeatureGroup | undefined> = ref(undefined);
 const mapRef: Ref<HTMLElement | undefined> = ref(undefined);
 
 const eventBus = inject('eventBus') as Emitter<Record<EventType, any>>;
+
+L.Icon.Default.prototype.options.iconUrl = markerIconUrl;
+L.Icon.Default.prototype.options.iconRetinaUrl = markerIconRetinaUrl;
+L.Icon.Default.prototype.options.shadowUrl = markerShadowUrl;
+L.Icon.Default.imagePath = "";
 
 onMounted(() => {
   if (mapRef.value === undefined) {
