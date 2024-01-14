@@ -32,9 +32,16 @@ INSERT INTO wayToNodeRelation (node_id, way_id, position) VALUES (?, ?, ?);
 `
 
 	updateCrossings = `
-UPDATE wayToNodeRelation SET is_crossing = true WHERE (
-      SELECT COUNT(*) FROM wayToNodeRelation AS rel WHERE rel.node_id = wayToNodeRelation.node_id
-) >= 2;
+UPDATE wayToNodeRelation
+SET is_crossing = CASE
+WHEN node_id IN (
+  SELECT node_id
+  FROM wayToNodeRelation
+  GROUP BY node_id
+  HAVING COUNT(*) >= 2
+) THEN true
+ELSE false
+END;
 `
 
 	selectWayIDsFromNodeID = `

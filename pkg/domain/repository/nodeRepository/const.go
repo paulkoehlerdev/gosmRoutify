@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS node (
 `
 	createIndices = `
 CREATE INDEX IF NOT EXISTS node_osm_id_idx ON node (osm_id);
+CREATE INDEX IF NOT EXISTS idx_lat ON node(lat);
+CREATE INDEX IF NOT EXISTS idx_lon ON node(lon);
 `
 
 	insertNode = `
