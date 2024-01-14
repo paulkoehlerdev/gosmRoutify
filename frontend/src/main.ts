@@ -9,6 +9,7 @@ import mitt from 'mitt'
 import L from 'leaflet'
 
 // eslint-disable-next-line
+// @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl
 // eslint-disable-next-line
 L.Icon.Default.mergeOptions({
