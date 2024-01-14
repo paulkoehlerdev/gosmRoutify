@@ -29,14 +29,22 @@ func NewHttpServer(
 		application: application,
 	}
 
-	mux.HandleFunc("/api/route", server.route)
-	mux.HandleFunc("/api/locate", server.locate)
-	mux.HandleFunc("/api/search", server.search)
+	mux.HandleFunc("/api/route", cors(server.route))
+	mux.HandleFunc("/api/locate", cors(server.locate))
+	mux.HandleFunc("/api/search", cors(server.search))
 
 	return &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port),
 		Handler: mux,
 	}, nil
+}
+
+func cors(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		next(w, r)
+	}
 }
 
 func (i *impl) route(w http.ResponseWriter, r *http.Request) {
