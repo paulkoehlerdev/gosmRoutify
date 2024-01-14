@@ -41,7 +41,7 @@ function formatDistance(distance: number): string {
       </div>
     </div>
 
-    <ul v-if="route !== undefined" class="list-group list-group-flush">
+    <ul v-if="route !== undefined && !loading" class="list-group list-group-flush">
       <li v-for="part in route"
           class="list-group-item">
         <i class="bi bi-alarm"></i> {{ formatDuration(part.time) }}<br>
@@ -49,7 +49,7 @@ function formatDistance(distance: number): string {
       </li>
     </ul>
 
-    <div v-if="error !== undefined" class="card-body">
+    <div v-if="error !== undefined && !loading" class="card-body">
       {{ error }}
     </div>
   </div>
