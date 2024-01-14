@@ -20,7 +20,7 @@ type WayService interface {
 	UpdateCrossings() error
 }
 
-const bulkInsertBufferSize = 1<<20 - 1
+const bulkInsertBufferSize = 1<<16 - 1
 
 type impl struct {
 	wayRepository       wayRepository.WayRepository

@@ -40,7 +40,7 @@ func (i *secondPassProcessor) ProcessNode(node osmpbfreaderdata.Node) {
 
 	i.nodeCount++
 	if i.nodeCount%1000000 == 0 {
-		i.logger.Info().Msgf("Inserted %d nodes, accepted %d", i.nodeCount, i.acceptedNodeCount)
+		i.logger.Info().Msgf("Inserted %dM nodes, accepted %d", i.nodeCount/1000000, i.acceptedNodeCount)
 	}
 
 	address, addrErr := i.getAddressFromNode(node)
@@ -91,7 +91,7 @@ func (i *secondPassProcessor) OnFinish() {
 		return
 	}
 
-	i.logger.Info().Msgf("Inserted %d nodes, accepted %d", i.nodeCount, i.acceptedNodeCount)
+	i.logger.Info().Msgf("Inserted %dM nodes, accepted %d", i.nodeCount/1000000, i.acceptedNodeCount)
 }
 
 func (i *secondPassProcessor) getAddressFromNode(node osmpbfreaderdata.Node) (*address.Address, error) {

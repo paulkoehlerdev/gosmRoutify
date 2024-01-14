@@ -39,7 +39,7 @@ func (i *firstPassProcessor) ProcessWay(way osmpbfreaderdata.Way) {
 
 	i.wayCount++
 	if i.wayCount%1000000 == 0 {
-		i.logger.Info().Msgf("Inserted %d ways, accepted %d", i.wayCount, i.acceptedWayCount)
+		i.logger.Info().Msgf("Inserted %dM ways, accepted %d", i.wayCount/1000000, i.acceptedWayCount)
 	}
 
 	address, err := i.getAddressFromWay(way)
@@ -92,7 +92,7 @@ func (i *firstPassProcessor) OnFinish() {
 		i.logger.Error().Msgf("Error while updating crossings: %s", err.Error())
 	}
 
-	i.logger.Info().Msgf("Inserted %d ways, accepted %d", i.wayCount, i.acceptedWayCount)
+	i.logger.Info().Msgf("Inserted %dM ways, accepted %d", i.wayCount/1000000, i.acceptedWayCount)
 }
 
 func (i *firstPassProcessor) getAddressFromWay(way osmpbfreaderdata.Way) (*address.Address, error) {

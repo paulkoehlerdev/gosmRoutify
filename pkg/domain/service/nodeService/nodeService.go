@@ -7,7 +7,7 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 )
 
-const bulkInsertBufferSize = 1<<20 - 1
+const bulkInsertBufferSize = 1<<16 - 1
 
 type NodeService interface {
 	InsertNode(node node.Node) error
