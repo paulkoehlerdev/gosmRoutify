@@ -12,9 +12,15 @@
 > it is not an official project of the university. It does not represent the opinion of the university
 > or any of its employees.
 
+## Demo
+
+There is a public demo available at [https://demo.gosmroutify.xyz](https://demo.gosmroutify.xyz).
+It's a simple web interface to test the routing engine. If there are any bugs or problems, please open an issue.
+This demo may be offline or unusable from time to time, because I'm using it for testing and development.
+
 ## Documentation
 
-The documentation is only available in German. \
+The full documentation is only available in German. \
 You can find it [here](https://docs.gosmroutify.xyz).
 
 ## Special Thanks
@@ -26,3 +32,23 @@ Special thanks to the owners and maintainers of following libraries, which I eit
 - [`valhalla` https://github.com/valhalla/valhalla](https://github.com/valhalla/valhalla)
 
 I also want to thank [Geofabrik GmbH](https://www.geofabrik.de/) for providing the OSM data extracts for testing and experiencing this project.
+
+## Used Software and Libraries
+
+### Backend
+
+- [`Go` https://go.dev](https://go.dev/)
+- [`go-sqlite3` https://github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+
+### Frontend
+
+- [`Vue.js` https://vuejs.org](https://vuejs.org/)
+- [`Leaflet` https://leafletjs.com](https://leafletjs.com/)
+- [`Bootstrap` https://getbootstrap.com](https://getbootstrap.com/)
+- [`Bootstrap Icons` https://icons.getbootstrap.com](https://icons.getbootstrap.com/)
+- [`lodash` https://lodash.com](https://lodash.com/)
+- [`mitt` https://github.com/developit/mitt](https://github.com/developit/mitt)
+
+### Documentation
+
+- [`Docusaurus` https://docusaurus.io](https://docusaurus.io/)

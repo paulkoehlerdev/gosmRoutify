@@ -66,6 +66,11 @@ const config = {
             label: 'Dokumentation',
           },
           {
+            href: 'https://demo.gosmroutify.xyz',
+            label: 'Demo',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/paulkoehlerdev/gosmRoutify',
             label: 'GitHub',
             position: 'right',
@@ -76,11 +81,15 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Docs',
+            title: 'Links',
             items: [
               {
                 label: 'Dokumentation',
                 to: '/docs/',
+              },
+              {
+                label: 'Demo',
+                to: 'https://demo.gosmroutify.xyz',
               },
             ],
           },

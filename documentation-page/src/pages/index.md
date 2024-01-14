@@ -1,5 +1,5 @@
 ---
-title: Welcome to gosmRoutify
+title: gosmRoutify - Dokumentation
 ---
 
 # gosmRoutify
@@ -18,9 +18,7 @@ Bitte versuchen Sie nicht dieses Projekt für den produktiven Einsatz zu verwend
 
 :::
 
-## Dokumentation
-
-Die Projektdokumentation finden Sie [hier](/docs/)
+## 
 
 ## Dankeschön!
 
