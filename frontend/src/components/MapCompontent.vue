@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { inject, onMounted, type Ref, ref } from 'vue'
 import "leaflet/dist/leaflet.css";
-import L, { Map, LatLng, FeatureGroup, type LatLngTuple, Point } from 'leaflet'
+import "leaflet/dist/images/marker-icon.png";
+import "leaflet/dist/images/marker-icon-2x.png";
+import "leaflet/dist/images/marker-shadow.png";
+import L, { Map, LatLng, FeatureGroup } from 'leaflet'
 import type { Emitter, EventType } from 'mitt'
 
 const map: Ref<Map | undefined> = ref(undefined);
