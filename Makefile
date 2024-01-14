@@ -1,10 +1,10 @@
 .PHONY: build
 
-build: build-importer build-router
+build: build-loader build-router
 
-build-importer:
-	@echo "Building importer..."
-	@go build -o bin/importer ./cmd/importer
+build-loader:
+	@echo "Building loader..."
+	@go build -o bin/loader ./cmd/loader
 
 build-router:
 	@echo "Building router..."
