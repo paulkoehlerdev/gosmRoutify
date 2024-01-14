@@ -76,7 +76,7 @@ eventBus.on('startRoute', async ({ addresses }: {addresses: { point: LatLng }[]}
 </script>
 
 <template>
-  <div class="m-4" id="sidebar">
+  <div class="p-4" id="sidebar">
     <div class="row">
       <div class="col">
         <SearchbarComponent v-for="({ address }, index) in selectedAddresses"
@@ -94,6 +94,6 @@ eventBus.on('startRoute', async ({ addresses }: {addresses: { point: LatLng }[]}
 #sidebar {
   z-index: 2;
   position: absolute;
-  width: 30%;
+  width: min(100%, max(400px, 30%));
 }
 </style>

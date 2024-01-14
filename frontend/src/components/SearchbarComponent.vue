@@ -90,14 +90,22 @@ function unselectResult() {
     <span class="input-group-text">
         <i :class="'bi ' + icon"></i>
     </span>
-    <input type="text"
+    <input v-if="address === undefined"
+          type="text"
            autocomplete="false"
            class="form-control"
-           :disabled="address !== undefined"
            :placeholder=placeholder
            v-model=value
            @focus="emitChange"
            @input="emitChange"
+    />
+    <input v-if="address !== undefined"
+           type="text"
+           autocomplete="false"
+           class="form-control"
+           disabled="true"
+           :placeholder=placeholder
+           :value="getValue()"
     />
     <button v-if="address !== undefined"
             class="btn btn-light"
