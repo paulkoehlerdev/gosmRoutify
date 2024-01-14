@@ -14,9 +14,8 @@ CREATE TABLE IF NOT EXISTS way (
     osm_id INTEGER PRIMARY KEY UNIQUE NOT NULL,
     tags BLOB -- JSON
 ) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_way_highway_tag ON way((tags->>'$.highway'));
-
+`
+	createIndices = `
 CREATE INDEX IF NOT EXISTS wayToNodeRelation_node_id_idx ON wayToNodeRelation (node_id);
 CREATE INDEX IF NOT EXISTS wayToNodeRelation_way_id_idx ON wayToNodeRelation (way_id);
 

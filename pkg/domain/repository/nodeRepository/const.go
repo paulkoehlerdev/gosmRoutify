@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS node (
     lon REAL NOT NULL,
     tags BLOB -- JSON
 ) STRICT;
-
+`
+	createIndices = `
 CREATE INDEX IF NOT EXISTS node_osm_id_idx ON node (osm_id);
 `
 

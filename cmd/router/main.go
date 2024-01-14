@@ -43,7 +43,7 @@ func main() {
 	defer db.Close()
 
 	nodeRepo := nodeRepository.New(db)
-	err = nodeRepo.Init()
+	err = nodeRepo.Init(true)
 	if err != nil {
 		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
 		return
@@ -52,7 +52,7 @@ func main() {
 	nodeSvc := nodeService.New(nodeRepo, logger.WithAttrs("service", "node"))
 
 	wayRepo := wayRepository.New(db)
-	err = wayRepo.Init()
+	err = wayRepo.Init(true)
 	if err != nil {
 		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
 		return

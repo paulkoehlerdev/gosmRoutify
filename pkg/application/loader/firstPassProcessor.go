@@ -78,6 +78,11 @@ func (i *firstPassProcessor) OnFinish() {
 		i.logger.Error().Msgf("Error while committing bulk insert: %s", err.Error())
 	}
 
+	err = i.wayService.CreateIndices()
+	if err != nil {
+		i.logger.Error().Msgf("Error while creating indices: %s", err.Error())
+	}
+
 	err = i.wayService.UpdateCrossings()
 	if err != nil {
 		i.logger.Error().Msgf("Error while updating crossings: %s", err.Error())

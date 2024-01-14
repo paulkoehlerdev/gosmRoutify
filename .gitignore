@@ -1,6 +1,6 @@
 config.json
 *.log
 tmp/
+bin/
 resources/data/
-resources/graph/
 *.db

@@ -7,13 +7,15 @@ import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
 )
 
-const bulkInsertBufferSize = 2 << 9
+const bulkInsertBufferSize = 1<<20 - 1
 
 type NodeService interface {
 	InsertNode(node node.Node) error
 
 	InsertNodeBulk(node node.Node) error
 	CommitBulkInsert() error
+
+	CreateIndices() error
 
 	SelectNodeFromID(id int64) (*node.Node, error)
 	SelectNodesFromIDs(ids []int64) ([]*node.Node, error)
@@ -57,6 +59,10 @@ func (i *impl) CommitBulkInsert() error {
 	}
 	i.bulkInsertBuffer = make([]node.Node, 0, bulkInsertBufferSize)
 	return nil
+}
+
+func (i *impl) CreateIndices() error {
+	return i.nodeRepository.InitIndices()
 }
 
 func (i *impl) SelectNodeFromID(id int64) (*node.Node, error) {

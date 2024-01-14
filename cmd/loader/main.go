@@ -46,16 +46,16 @@ func main() {
 	)
 
 	wayRepo := wayRepository.New(db)
-	err = wayRepo.Init()
+	err = wayRepo.Init(false)
 	if err != nil {
 		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
 		return
 	}
 
-	waySvc := wayService.New(wayRepo)
+	waySvc := wayService.New(wayRepo, logger.WithAttrs("service", "way"))
 
 	nodeRepo := nodeRepository.New(db)
-	err = nodeRepo.Init()
+	err = nodeRepo.Init(false)
 	if err != nil {
 		logger.Error().Msgf("error while initializing node repository: %s", err.Error())
 		return

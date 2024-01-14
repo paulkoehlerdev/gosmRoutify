@@ -3,6 +3,8 @@ package wayService
 import (
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/entity/way"
 	"github.com/paulkoehlerdev/gosmRoutify/pkg/domain/repository/wayRepository"
+	"github.com/paulkoehlerdev/gosmRoutify/pkg/libraries/logging"
+	"sync"
 )
 
 type WayService interface {
@@ -11,21 +13,27 @@ type WayService interface {
 	InsertWayBulk(way way.Way) error
 	CommitBulkInsert() error
 
+	CreateIndices() error
+
 	SelectWayIDsFromNode(nodeID int64) ([]int64, error)
 
 	UpdateCrossings() error
 }
 
-const bulkInsertBufferSize = 2 << 9
+const bulkInsertBufferSize = 1<<20 - 1
 
 type impl struct {
-	wayRepository    wayRepository.WayRepository
-	bulkInsertBuffer []way.Way
+	wayRepository       wayRepository.WayRepository
+	bulkInsertBuffer    []way.Way
+	bulkInsertWaitGroup *sync.WaitGroup
+	logger              logging.Logger
 }
 
-func New(wayRepository wayRepository.WayRepository) WayService {
+func New(wayRepository wayRepository.WayRepository, logger logging.Logger) WayService {
 	return &impl{
-		wayRepository: wayRepository,
+		wayRepository:       wayRepository,
+		bulkInsertWaitGroup: &sync.WaitGroup{},
+		logger:              logger,
 	}
 }
 
@@ -52,6 +60,10 @@ func (i *impl) CommitBulkInsert() error {
 	}
 	i.bulkInsertBuffer = make([]way.Way, 0, bulkInsertBufferSize)
 	return nil
+}
+
+func (i *impl) CreateIndices() error {
+	return i.wayRepository.InitIndices()
 }
 
 func (i *impl) UpdateCrossings() error {

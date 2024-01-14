@@ -82,6 +82,13 @@ func (i *secondPassProcessor) OnFinish() {
 		i.logger.Error().Msgf("Error while committing bulk insert: %s", err.Error())
 		return
 	}
+
+	err = i.nodeService.CreateIndices()
+	if err != nil {
+		i.logger.Error().Msgf("Error while creating indices: %s", err.Error())
+		return
+	}
+
 	i.logger.Info().Msgf("Inserted %d nodes, accepted %d", i.nodeCount, i.acceptedNodeCount)
 }
 

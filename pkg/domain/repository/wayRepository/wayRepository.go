@@ -11,7 +11,8 @@ import (
 )
 
 type WayRepository interface {
-	Init() error
+	Init(initIndices bool) error
+	InitIndices() error
 	InsertWay(node way.Way) error
 
 	InsertWays(ways []way.Way) error
@@ -49,15 +50,31 @@ func New(db database.Database) WayRepository {
 	}
 }
 
-func (i *impl) Init() error {
+func (i *impl) Init(createIndices bool) error {
 	_, err := i.db.Exec(dataModel)
 	if err != nil {
 		return fmt.Errorf("error while creating data model: %s", err.Error())
 	}
 
+	if createIndices {
+		err = i.InitIndices()
+		if err != nil {
+			return fmt.Errorf("error while initializing indices: %s", err.Error())
+		}
+	}
+
 	err = i.prepareStatements()
 	if err != nil {
 		return fmt.Errorf("error while preparing statements: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (i *impl) InitIndices() error {
+	_, err := i.db.Exec(createIndices)
+	if err != nil {
+		return fmt.Errorf("error while creating indices: %s", err.Error())
 	}
 
 	return nil
