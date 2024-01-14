@@ -38,7 +38,7 @@ func (i *firstPassProcessor) ProcessWay(way osmpbfreaderdata.Way) {
 	}
 
 	i.wayCount++
-	if i.wayCount%100000 == 0 {
+	if i.wayCount%1000000 == 0 {
 		i.logger.Info().Msgf("Inserted %d ways, accepted %d", i.wayCount, i.acceptedWayCount)
 	}
 

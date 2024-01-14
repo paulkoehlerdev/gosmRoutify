@@ -39,7 +39,7 @@ func (i *secondPassProcessor) ProcessNode(node osmpbfreaderdata.Node) {
 	}
 
 	i.nodeCount++
-	if i.nodeCount%100000 == 0 {
+	if i.nodeCount%1000000 == 0 {
 		i.logger.Info().Msgf("Inserted %d nodes, accepted %d", i.nodeCount, i.acceptedNodeCount)
 	}
 
