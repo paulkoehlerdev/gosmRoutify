@@ -17,7 +17,7 @@ function centerPoint() {
     return;
   }
 
-  fetchLocateAddress(props.address).then((p: LatLng) => {
+  fetchLocateAddress(import.meta.env.VITE_API_URL, props.address).then((p: LatLng) => {
     eventBus.emit('focusPoint', p)
   }).catch(console.log);
 }

@@ -5,6 +5,7 @@ import { debounce } from 'lodash'
 import { fetchAddresses } from '@/api/api'
 import type { Emitter, EventType } from 'mitt'
 import type { Address } from '@/api/entities/address'
+import process from 'process'
 
 export type Type = 'start' | 'point' | 'end';
 
@@ -42,7 +43,6 @@ const placeholder = computed(() => {
   }
 })
 
-
 const value: Ref<string | undefined> = ref(undefined)
 
 function emitChange() {
@@ -55,8 +55,7 @@ function emitChange() {
 }
 
 function triggerSearch(query: string) {
-
-  fetchAddresses(query).then((results) => {
+  fetchAddresses(import.meta.env.VITE_API_URL, query).then((results) => {
     eventBus.emit('searchQueryResults', {
       results,
       index: props.index

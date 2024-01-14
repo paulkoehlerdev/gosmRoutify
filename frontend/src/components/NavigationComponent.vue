@@ -46,7 +46,7 @@ eventBus.on('selectAddress', async ({ address, index }) => {
 
   if (!selectedAddresses.value.map((v) => v.address === undefined).reduce((a, b) => a || b, false)) {
     const addresses = await Promise.all(selectedAddresses.value.map(async (v) => {
-      const point = await fetchLocateAddress(v.address as Address)
+      const point = await fetchLocateAddress(import.meta.env.VITE_API_URL, v.address as Address)
       return { ...v, point }
     }));
 
@@ -60,7 +60,7 @@ eventBus.on('selectAddress', async ({ address, index }) => {
 
 eventBus.on('startRoute', async ({ addresses }: {addresses: { point: LatLng }[]}) => {
   try {
-    route.value = await fetchRoute(addresses.map((v) => v.point))
+    route.value = await fetchRoute(import.meta.env.VITE_API_URL, addresses.map((v) => v.point))
 
     eventBus.emit('foundRoute', { route: route.value });
     loading.value = false;

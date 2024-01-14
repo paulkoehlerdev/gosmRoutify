@@ -1,4 +1,7 @@
 {
+  "database": {
+    "file": "./resources/oberbayern.db"
+  },
   "logging": {
     "level": "info",
     "file": "logs/application.log",
