@@ -21,7 +21,7 @@ This demo may be offline or unusable from time to time, because I'm using it for
 ## Documentation
 
 The full documentation is only available in German. \
-You can find it [here](https://docs.gosmroutify.xyz).
+You can find it [here (https://docs.gosmroutify.xyz)](https://docs.gosmroutify.xyz).
 
 ## Special Thanks
 
@@ -39,6 +39,7 @@ I also want to thank [Geofabrik GmbH](https://www.geofabrik.de/) for providing t
 
 - [`Go` https://go.dev](https://go.dev/)
 - [`go-sqlite3` https://github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+- [`SQLite` https://www.sqlite.org](https://www.sqlite.org/index.html)
 
 ### Frontend
 
@@ -52,3 +53,9 @@ I also want to thank [Geofabrik GmbH](https://www.geofabrik.de/) for providing t
 ### Documentation
 
 - [`Docusaurus` https://docusaurus.io](https://docusaurus.io/)
+
+## Hosting
+
+The demo backend is currently hosted on a VPS and protected by [Cloudflare](https://www.cloudflare.com/).
+The demo frontend is hosted on [Vercel](https://vercel.com).
+The documentation is hosted on [GitHub Pages](https://pages.github.com/).

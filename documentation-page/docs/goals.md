@@ -1,7 +1,7 @@
 ---
 title: Zielsetzung
 slug: goals
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 Ziel des Projektes ist es einen stabilen Routing-Dienst (in Golang) zu entwickeln, um die grundlegenden Algorithmen und Datenstrukturen, die mit einem Dienst, wie Google Maps, Apple Maps o. ä. einhergehen. Dabei soll der Fokus darauf eine möglichst ressourcenschonende Implementation zu finden, die möglicherweise für On-Device-Routing oder für das selbst auf einem Server betreiben geeignet ist. Aus diesen Grundsätzen ergeben sich folgende Limitationen, die hier erfüllt werden sollen:

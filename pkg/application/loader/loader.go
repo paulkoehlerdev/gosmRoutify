@@ -56,10 +56,15 @@ func (i *impl) Load() error {
 		false, true, true,
 	)
 
+	i.logger.Info().Msgf("Starting import!")
+	i.logger.Info().Msgf("First pass: inserting ways and addresses")
+
 	err := i.dataService.Process(firstPassProcessor, firstPassFilter)
 	if err != nil {
 		return fmt.Errorf("error while processing first pass: %s", err.Error())
 	}
+
+	i.logger.Info().Msgf("Second pass: inserting nodes")
 
 	err = i.dataService.Process(secondPassProcessor, secondPassFilter)
 	if err != nil {

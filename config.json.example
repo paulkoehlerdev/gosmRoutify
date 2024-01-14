@@ -1,6 +1,6 @@
 {
   "database": {
-    "file": "./resources/oberbayern.db"
+    "file": "./resources/germany.db"
   },
   "logging": {
     "level": "info",

@@ -83,6 +83,8 @@ func (i *secondPassProcessor) OnFinish() {
 		return
 	}
 
+	i.logger.Info().Msgf("Creating Node Indices!")
+
 	err = i.nodeService.CreateIndices()
 	if err != nil {
 		i.logger.Error().Msgf("Error while creating indices: %s", err.Error())
