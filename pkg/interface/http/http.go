@@ -29,9 +29,11 @@ func NewHttpServer(
 		application: application,
 	}
 
-	mux.HandleFunc("/api/route", cors(server.route))
-	mux.HandleFunc("/api/locate", cors(server.locate))
-	mux.HandleFunc("/api/search", cors(server.search))
+	mux.HandleFunc("/api/route", server.route)
+	mux.HandleFunc("/api/locate", server.locate)
+	mux.HandleFunc("/api/search", server.search)
+
+	mux.HandleFunc("/", server.root)
 
 	return &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port),
@@ -39,15 +41,18 @@ func NewHttpServer(
 	}, nil
 }
 
-func cors(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+func cors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
 
-		next(w, r)
-	}
+func (i *impl) root(w http.ResponseWriter, r *http.Request) {
+	cors(&w)
+	http.Error(w, "not found", http.StatusNotFound)
 }
 
 func (i *impl) route(w http.ResponseWriter, r *http.Request) {
+	cors(&w)
+
 	routeQueryB64 := r.URL.Query().Get("r")
 
 	routeQuery, err := base64.URLEncoding.DecodeString(routeQueryB64)
@@ -92,6 +97,8 @@ func (i *impl) route(w http.ResponseWriter, r *http.Request) {
 }
 
 func (i *impl) locate(w http.ResponseWriter, r *http.Request) {
+	cors(&w)
+
 	id := r.URL.Query().Get("id")
 
 	idInt, err := strconv.ParseInt(id, 10, 64)
@@ -124,6 +131,8 @@ func (i *impl) locate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (i *impl) search(w http.ResponseWriter, r *http.Request) {
+	cors(&w)
+
 	query := r.URL.Query().Get("q")
 
 	addresses, err := i.application.FindAddresses(query)
